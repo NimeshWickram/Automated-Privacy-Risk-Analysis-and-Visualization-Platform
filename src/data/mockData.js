@@ -1,0 +1,543 @@
+/**
+ * Mock data simulating an Android APK analysis backend
+ * for the Privacy Risk Analysis Platform.
+ */
+
+// =============================================
+// APP DETAIL DATA - "Kids Math Pro"
+// =============================================
+export const appDetailData = {
+  appName: "Kids Math Pro",
+  packageName: "com.edufun.kidsmathpro",
+  developer: "EduFun Learning Ltd.",
+  category: "Education",
+  targetAge: "Ages 5-12",
+  version: "3.2.1",
+  lastUpdated: "2025-11-15",
+  installs: "5,000,000+",
+  playStoreRating: 4.3,
+  iconUrl: null, // Will use generated icon
+  description:
+    "An interactive math learning app for children with games, quizzes, and progress tracking.",
+
+  // Overall Privacy Risk Score (0-100, higher = worse)
+  privacyRiskScore: 72,
+  riskGrade: "D",
+  riskLevel: "High",
+
+  // ---- Risk Dimensions (for Radar Chart) ----
+  riskDimensions: [
+    { dimension: "Permissions", score: 78, maxScore: 100 },
+    { dimension: "Trackers", score: 85, maxScore: 100 },
+    { dimension: "Network", score: 60, maxScore: 100 },
+    { dimension: "Storage", score: 45, maxScore: 100 },
+    { dimension: "Child Safety", score: 90, maxScore: 100 },
+  ],
+
+  // ---- Permissions Analysis ----
+  permissions: {
+    declared: 18,
+    used: 12,
+    dangerous: 7,
+    list: [
+      {
+        name: "ACCESS_FINE_LOCATION",
+        category: "Location",
+        isDangerous: true,
+        isUsed: true,
+        justification: "No clear educational purpose for precise location.",
+      },
+      {
+        name: "ACCESS_COARSE_LOCATION",
+        category: "Location",
+        isDangerous: true,
+        isUsed: true,
+        justification: "Used for ad targeting based on region.",
+      },
+      {
+        name: "CAMERA",
+        category: "Camera",
+        isDangerous: true,
+        isUsed: false,
+        justification: "Declared but never invoked in code.",
+      },
+      {
+        name: "READ_CONTACTS",
+        category: "Contacts",
+        isDangerous: true,
+        isUsed: false,
+        justification: "Declared but no contact access found in analysis.",
+      },
+      {
+        name: "RECORD_AUDIO",
+        category: "Microphone",
+        isDangerous: true,
+        isUsed: true,
+        justification: "Used in voice-based quiz feature.",
+      },
+      {
+        name: "READ_EXTERNAL_STORAGE",
+        category: "Storage",
+        isDangerous: true,
+        isUsed: true,
+        justification: "Reads files for caching ad content.",
+      },
+      {
+        name: "WRITE_EXTERNAL_STORAGE",
+        category: "Storage",
+        isDangerous: true,
+        isUsed: true,
+        justification: "Writes cached ad assets and analytics logs.",
+      },
+      {
+        name: "INTERNET",
+        category: "Network",
+        isDangerous: false,
+        isUsed: true,
+        justification: "Required for online features and ad serving.",
+      },
+      {
+        name: "ACCESS_NETWORK_STATE",
+        category: "Network",
+        isDangerous: false,
+        isUsed: true,
+        justification: "Checks connectivity for content loading.",
+      },
+      {
+        name: "RECEIVE_BOOT_COMPLETED",
+        category: "System",
+        isDangerous: false,
+        isUsed: true,
+        justification: "Starts background tracking service on device boot.",
+      },
+      {
+        name: "VIBRATE",
+        category: "Hardware",
+        isDangerous: false,
+        isUsed: true,
+        justification: "Haptic feedback in games.",
+      },
+      {
+        name: "WAKE_LOCK",
+        category: "System",
+        isDangerous: false,
+        isUsed: true,
+        justification: "Keeps device awake during ad playback.",
+      },
+    ],
+  },
+
+  // ---- Third-Party Trackers ----
+  trackers: {
+    total: 7,
+    list: [
+      {
+        name: "Google AdMob",
+        category: "Advertising",
+        risk: "high",
+        description: "Mobile advertising SDK that collects device IDs and usage patterns.",
+      },
+      {
+        name: "Facebook Analytics",
+        category: "Analytics",
+        risk: "high",
+        description: "Tracks user behavior and shares data with Meta's ad network.",
+      },
+      {
+        name: "Firebase Analytics",
+        category: "Analytics",
+        risk: "medium",
+        description: "Google analytics service tracking app usage events.",
+      },
+      {
+        name: "Crashlytics",
+        category: "Crash Reporting",
+        risk: "low",
+        description: "Crash and error reporting for stability monitoring.",
+      },
+      {
+        name: "Unity Ads",
+        category: "Advertising",
+        risk: "high",
+        description: "Video advertising SDK with behavioral tracking.",
+      },
+      {
+        name: "AppsFlyer",
+        category: "Attribution",
+        risk: "medium",
+        description: "Install attribution and marketing analytics platform.",
+      },
+      {
+        name: "Adjust",
+        category: "Attribution",
+        risk: "medium",
+        description: "Mobile measurement and fraud prevention SDK.",
+      },
+    ],
+  },
+
+  // ---- Network Endpoints ----
+  networkEndpoints: {
+    total: 14,
+    encrypted: 10,
+    unencrypted: 4,
+    endpoints: [
+      { url: "https://ads.google.com", purpose: "Ad Serving", encrypted: true },
+      { url: "https://graph.facebook.com", purpose: "Analytics", encrypted: true },
+      { url: "http://analytics.edufun.io", purpose: "Usage Tracking", encrypted: false },
+      {
+        url: "https://firebaselogging.googleapis.com",
+        purpose: "Event Logging",
+        encrypted: true,
+      },
+      {
+        url: "http://cdn.edufun.io/assets",
+        purpose: "Content Delivery",
+        encrypted: false,
+      },
+      {
+        url: "https://api.appsflyer.com",
+        purpose: "Install Attribution",
+        encrypted: true,
+      },
+      {
+        url: "http://tracker.edufun.io/collect",
+        purpose: "Data Collection",
+        encrypted: false,
+      },
+      {
+        url: "https://unityads.unity3d.com",
+        purpose: "Video Ads",
+        encrypted: true,
+      },
+      {
+        url: "https://app.adjust.com",
+        purpose: "Attribution",
+        encrypted: true,
+      },
+      {
+        url: "http://telemetry.edufun.io",
+        purpose: "Telemetry",
+        encrypted: false,
+      },
+      {
+        url: "https://api.edufun.io/v2",
+        purpose: "App API",
+        encrypted: true,
+      },
+      {
+        url: "https://crashlytics.googleapis.com",
+        purpose: "Crash Reports",
+        encrypted: true,
+      },
+      {
+        url: "https://settings.crashlytics.com",
+        purpose: "Crash Config",
+        encrypted: true,
+      },
+      {
+        url: "https://fcm.googleapis.com",
+        purpose: "Push Notifications",
+        encrypted: true,
+      },
+    ],
+  },
+
+  // ---- Disclosure Mismatch (Play Store vs Analysis) ----
+  disclosureMismatch: {
+    overallMatch: 42, // percentage match between claimed and actual
+    items: [
+      {
+        dataType: "Precise Location",
+        playStoreClaim: "Not collected",
+        analysisResult: "Collected and shared with ad networks",
+        isMismatch: true,
+        severity: "critical",
+        explanation:
+          "The app accesses your precise GPS location and sends it to advertising partners, but the Play Store listing says it does not collect location data.",
+      },
+      {
+        dataType: "Device Identifiers",
+        playStoreClaim: "Collected for app functionality",
+        analysisResult: "Collected and shared with 5 third-party SDKs",
+        isMismatch: true,
+        severity: "high",
+        explanation:
+          "Your device's unique identifiers (Android ID, Advertising ID) are shared with multiple advertising and analytics companies beyond what's disclosed.",
+      },
+      {
+        dataType: "Contacts",
+        playStoreClaim: "Not collected",
+        analysisResult: "Permission declared but not accessed",
+        isMismatch: false,
+        severity: "info",
+        explanation:
+          "The app requests contact permission but our analysis did not find it being used. However, the permission could be activated in future updates.",
+      },
+      {
+        dataType: "App Activity",
+        playStoreClaim: "Collected for analytics",
+        analysisResult: "Collected and shared with ad networks",
+        isMismatch: true,
+        severity: "high",
+        explanation:
+          "Detailed records of how your child uses the app (screens visited, time spent, actions taken) are shared with advertising companies for profiling.",
+      },
+      {
+        dataType: "Crash Logs",
+        playStoreClaim: "Collected for app functionality",
+        analysisResult: "Collected for crash reporting",
+        isMismatch: false,
+        severity: "low",
+        explanation:
+          "Crash data collection matches the disclosure. This data helps developers fix bugs.",
+      },
+      {
+        dataType: "Photos/Videos",
+        playStoreClaim: "Not collected",
+        analysisResult: "Not collected",
+        isMismatch: false,
+        severity: "info",
+        explanation: "Consistent with disclosure. No photo or video access detected.",
+      },
+      {
+        dataType: "Audio Recordings",
+        playStoreClaim: "Not collected",
+        analysisResult: "Collected for voice quiz feature",
+        isMismatch: true,
+        severity: "medium",
+        explanation:
+          "The app records audio during voice-based quizzes. While this appears functional, it's not disclosed in the Data Safety section.",
+      },
+    ],
+  },
+
+  // ---- Risk Factors (human-readable warnings) ----
+  riskFactors: [
+    {
+      id: "rf-1",
+      title: "Location Tracking Active",
+      description:
+        "This app tracks your child's precise GPS location and shares it with advertising networks for targeted ads.",
+      severity: "critical",
+      category: "Location",
+      icon: "map-pin",
+    },
+    {
+      id: "rf-2",
+      title: "Contains 3 Advertising SDKs",
+      description:
+        "Google AdMob, Facebook Ads, and Unity Ads are embedded in this app, each collecting behavioral data for ad targeting.",
+      severity: "high",
+      category: "Advertising",
+      icon: "megaphone",
+    },
+    {
+      id: "rf-3",
+      title: "Transmits Data Insecurely",
+      description:
+        "4 out of 14 network connections use unencrypted HTTP instead of HTTPS, putting your child's data at risk of interception.",
+      severity: "high",
+      category: "Network Security",
+      icon: "shield-off",
+    },
+    {
+      id: "rf-4",
+      title: "Starts on Device Boot",
+      description:
+        "The app registers a service that starts automatically when the device is turned on, potentially tracking usage even when the app isn't open.",
+      severity: "medium",
+      category: "Background Activity",
+      icon: "power",
+    },
+    {
+      id: "rf-5",
+      title: "Data Safety Disclosure Inaccurate",
+      description:
+        "Only 42% of the app's data practices match what's disclosed on Google Play. Major discrepancies found in location and device ID collection.",
+      severity: "critical",
+      category: "Transparency",
+      icon: "file-warning",
+    },
+    {
+      id: "rf-6",
+      title: "Excessive Permissions Requested",
+      description:
+        "The app requests 7 dangerous permissions, but 2 of them (Camera, Contacts) are never actually used in the app's code.",
+      severity: "medium",
+      category: "Permissions",
+      icon: "key",
+    },
+    {
+      id: "rf-7",
+      title: "Not COPPA Compliant",
+      description:
+        "Despite targeting children ages 5-12, the app contains behavioral advertising and shares data with trackers without verifiable parental consent.",
+      severity: "critical",
+      category: "Child Safety",
+      icon: "baby",
+    },
+    {
+      id: "rf-8",
+      title: "Audio Recording Undisclosed",
+      description:
+        "The app uses the microphone for voice quizzes but does not disclose audio collection in its Google Play Data Safety section.",
+      severity: "medium",
+      category: "Microphone",
+      icon: "mic",
+    },
+  ],
+
+  // ---- Analysis metadata ----
+  analysisMetadata: {
+    analyzedAt: "2025-12-01T14:32:00Z",
+    analysisVersion: "2.1.0",
+    staticAnalysisComplete: true,
+    dynamicAnalysisComplete: true,
+    apkSize: "45.2 MB",
+    minSdkVersion: 21,
+    targetSdkVersion: 34,
+    apkHash: "sha256:a3f8b2c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9",
+  },
+};
+
+// =============================================
+// DASHBOARD OVERVIEW DATA
+// =============================================
+export const dashboardOverviewData = {
+  totalAppsAnalyzed: 247,
+  averageRiskScore: 58,
+  lastScanDate: "2025-12-01",
+
+  riskDistribution: [
+    { name: "Low Risk", value: 68, color: "#10b981" },
+    { name: "Medium Risk", value: 112, color: "#f59e0b" },
+    { name: "High Risk", value: 67, color: "#ef4444" },
+  ],
+
+  recentApps: [
+    {
+      id: 1,
+      name: "Kids Math Pro",
+      developer: "EduFun Learning Ltd.",
+      category: "Education",
+      riskScore: 72,
+      riskGrade: "D",
+      riskLevel: "High",
+      analyzedAt: "2025-12-01",
+    },
+    {
+      id: 2,
+      name: "ABC Phonics Adventure",
+      developer: "LearnPlay Studios",
+      category: "Education",
+      riskScore: 35,
+      riskGrade: "B",
+      riskLevel: "Low",
+      analyzedAt: "2025-11-30",
+    },
+    {
+      id: 3,
+      name: "Science Explorer Kids",
+      developer: "BrightMind Apps",
+      category: "Education",
+      riskScore: 55,
+      riskGrade: "C",
+      riskLevel: "Medium",
+      analyzedAt: "2025-11-29",
+    },
+    {
+      id: 4,
+      name: "Story Time Reader",
+      developer: "TinyTales Inc.",
+      category: "Education",
+      riskScore: 22,
+      riskGrade: "A",
+      riskLevel: "Low",
+      analyzedAt: "2025-11-28",
+    },
+    {
+      id: 5,
+      name: "Drawing & Coloring Fun",
+      developer: "CreativeKids Dev",
+      category: "Education",
+      riskScore: 61,
+      riskGrade: "C",
+      riskLevel: "Medium",
+      analyzedAt: "2025-11-27",
+    },
+    {
+      id: 6,
+      name: "Puzzle Master Junior",
+      developer: "GameEd Studios",
+      category: "Education",
+      riskScore: 88,
+      riskGrade: "F",
+      riskLevel: "High",
+      analyzedAt: "2025-11-26",
+    },
+  ],
+};
+
+// =============================================
+// COMPARISON DATA
+// =============================================
+export const comparisonApps = [
+  {
+    id: 1,
+    name: "Kids Math Pro",
+    developer: "EduFun Learning",
+    riskScore: 72,
+    riskGrade: "D",
+    permissions: { total: 18, dangerous: 7 },
+    trackers: 7,
+    encryptedEndpoints: "71%",
+    disclosureMatch: "42%",
+    childSafety: "Non-compliant",
+    dimensions: {
+      Permissions: 78,
+      Trackers: 85,
+      Network: 60,
+      Storage: 45,
+      "Child Safety": 90,
+    },
+  },
+  {
+    id: 2,
+    name: "ABC Phonics",
+    developer: "LearnPlay Studios",
+    riskScore: 35,
+    riskGrade: "B",
+    permissions: { total: 8, dangerous: 2 },
+    trackers: 2,
+    encryptedEndpoints: "100%",
+    disclosureMatch: "89%",
+    childSafety: "Compliant",
+    dimensions: {
+      Permissions: 30,
+      Trackers: 25,
+      Network: 15,
+      Storage: 40,
+      "Child Safety": 20,
+    },
+  },
+  {
+    id: 3,
+    name: "Science Explorer",
+    developer: "BrightMind Apps",
+    riskScore: 55,
+    riskGrade: "C",
+    permissions: { total: 12, dangerous: 4 },
+    trackers: 4,
+    encryptedEndpoints: "85%",
+    disclosureMatch: "65%",
+    childSafety: "Partial",
+    dimensions: {
+      Permissions: 50,
+      Trackers: 55,
+      Network: 45,
+      Storage: 35,
+      "Child Safety": 60,
+    },
+  },
+];
