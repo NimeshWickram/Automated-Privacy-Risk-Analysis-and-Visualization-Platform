@@ -34,36 +34,51 @@ export default function UploadModal({ isOpen, onClose }) {
     }
   }, [isOpen]);
 
-  // Handle mock progression
   useEffect(() => {
-    if (stepIndex >= 0 && stepIndex < ANALYSIS_STEPS.length) {
-      const step = ANALYSIS_STEPS[stepIndex];
-      
-      // Simulate progress bar filling up
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setProgress(0);
-      const startTime = Date.now();
-      
-      const interval = setInterval(() => {
-        const elapsed = Date.now() - startTime;
-        const currentProgress = Math.min((elapsed / step.duration) * 100, 100);
-        setProgress(currentProgress);
-        
-        if (currentProgress >= 100) {
-          clearInterval(interval);
+    if (stepIndex === 0 && file) {
+      const uploadFile = async () => {
+        try {
+          setProgress(20);
+          setStepIndex(1); // Uploading
+          
+          const formData = new FormData();
+          formData.append("file", file);
+          
+          setProgress(40);
+          setStepIndex(2); // Analysis
+
+          const res = await fetch("http://localhost:8000/api/analyze", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!res.ok) {
+            throw new Error("Analysis failed");
+          }
+          
+          setProgress(80);
+          setStepIndex(3); // Network
+          
+          const data = await res.json();
+          
+          setProgress(100);
+          setStepIndex(4); // Report
+          
           setTimeout(() => {
-            if (stepIndex === ANALYSIS_STEPS.length - 1) {
-              handleComplete();
-            } else {
-              setStepIndex(s => s + 1);
-            }
-          }, 300);
+            onClose();
+            navigate(`/analyze/${data.app_id}`);
+          }, 1000);
+          
+        } catch (error) {
+          alert("Error analyzing APK: " + error.message);
+          setStepIndex(-1);
+          setFile(null);
         }
-      }, 50);
+      };
       
-      return () => clearInterval(interval);
+      uploadFile();
     }
-  }, [stepIndex, handleComplete]);
+  }, [stepIndex, file, navigate, onClose]);
 
   const handleFileSelect = (e) => {
     const selected = e.target.files?.[0];

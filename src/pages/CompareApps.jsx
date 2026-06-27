@@ -1,8 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { GitCompareArrows } from 'lucide-react';
-import { comparisonApps } from '../data/mockData';
-
+import { GitCompareArrows, Loader2 } from 'lucide-react';
 const gradeStyles = {
   A: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
   B: 'bg-green-500/15 text-green-400 border-green-500/30',
@@ -14,9 +12,35 @@ const gradeStyles = {
 const radarColors = ['#818cf8', '#f472b6', '#34d399'];
 
 export default function CompareApps() {
+  const [comparisonApps, setComparisonApps] = useState([]);
   const [selectedApps, setSelectedApps] = useState([0, 1]);
+  const [loading, setLoading] = useState(true);
 
-  const apps = selectedApps.map(i => comparisonApps[i]);
+  useEffect(() => {
+    fetch('http://localhost:8000/api/compare')
+      .then(res => res.json())
+      .then(data => {
+        setComparisonApps(data);
+        if (data.length < 2) {
+            setSelectedApps([0, 0]);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin text-indigo-500 w-8 h-8" /></div>;
+  }
+
+  if (comparisonApps.length === 0) {
+    return <div className="text-center text-slate-400 mt-10">No apps available for comparison. Please upload an APK first.</div>;
+  }
+
+  const apps = selectedApps.map(i => comparisonApps[i] || comparisonApps[0]);
 
   // Build radar data
   const dimensions = ['Permissions', 'Trackers', 'Network', 'Storage', 'Child Safety'];
