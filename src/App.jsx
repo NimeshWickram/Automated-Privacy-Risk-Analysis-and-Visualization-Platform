@@ -1,5 +1,4 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import AppDetailView from './pages/AppDetailView';
@@ -11,8 +10,9 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
-          <Route path="/analyze" element={<AppDetailView />} />
-          <Route path="/compare" element={<CompareApps />} />
+          <Route path="/analyze" element={<Navigate to="/analyze/1" replace />} />
+          <Route path="analyze/:appId" element={<AppDetailView />} />
+          <Route path="compare" element={<CompareApps />} />
         </Route>
       </Routes>
     </BrowserRouter>

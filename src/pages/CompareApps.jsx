@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { GitCompareArrows, ChevronDown, ChevronUp, Shield, Lock, AlertTriangle, Check, X } from 'lucide-react';
+import { GitCompareArrows } from 'lucide-react';
 import { comparisonApps } from '../data/mockData';
 
 const gradeStyles = {
@@ -15,7 +15,6 @@ const radarColors = ['#818cf8', '#f472b6', '#34d399'];
 
 export default function CompareApps() {
   const [selectedApps, setSelectedApps] = useState([0, 1]);
-  const [expandedRows, setExpandedRows] = useState({});
 
   const apps = selectedApps.map(i => comparisonApps[i]);
 
@@ -23,7 +22,7 @@ export default function CompareApps() {
   const dimensions = ['Permissions', 'Trackers', 'Network', 'Storage', 'Child Safety'];
   const radarData = dimensions.map(dim => {
     const entry = { dimension: dim };
-    apps.forEach((app, i) => {
+    apps.forEach((app) => {
       entry[app.name] = app.dimensions[dim];
     });
     return entry;

@@ -1,4 +1,3 @@
-import React from 'react';
 import { MapPin, Megaphone, ShieldOff, Power, FileWarning, Key, Baby, Mic, AlertTriangle } from 'lucide-react';
 
 const iconMap = {

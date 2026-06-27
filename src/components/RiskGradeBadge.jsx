@@ -1,5 +1,3 @@
-import React from 'react';
-
 const gradeConfig = {
   A: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/40', label: 'Excellent' },
   B: { bg: 'bg-green-500/20', text: 'text-green-400', border: 'border-green-500/40', label: 'Good' },

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Shield, Lock, Unlock, Globe } from 'lucide-react';
 
 function TrackerCard({ tracker }) {
