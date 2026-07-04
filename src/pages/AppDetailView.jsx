@@ -1,17 +1,59 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Download, Package, Star, Users, Hash, ShieldCheck, Clock, Loader2 } from 'lucide-react';
+import domtoimage from 'dom-to-image-more';
+import jsPDF from 'jspdf';
 import RiskGradeBadge from '../components/RiskGradeBadge';
 import RiskRadarChart from '../components/RiskRadarChart';
 import DisclosureMismatch from '../components/DisclosureMismatch';
 import RiskFactorsList from '../components/RiskFactorsList';
 import TrackersAndNetwork from '../components/TrackersAndNetwork';
+import PrintableReport from '../components/PrintableReport';
 
 export default function AppDetailView() {
   const { appId } = useParams();
   const [app, setApp] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const reportRef = useRef();
+
+  const handleExportPDF = async () => {
+    if (!reportRef.current || !app) return;
+    setIsExporting(true);
+    
+    try {
+      const node = reportRef.current;
+      const scale = 2; // For better quality
+      
+      const param = {
+        height: node.offsetHeight * scale,
+        width: node.offsetWidth * scale,
+        style: {
+          transform: `scale(${scale})`,
+          transformOrigin: 'top left',
+          width: `${node.offsetWidth}px`,
+          height: `${node.offsetHeight}px`
+        },
+        bgcolor: '#0f172a' // Dark theme background
+      };
+      
+      const dataUrl = await domtoimage.toJpeg(node, param);
+      
+      const pdf = new jsPDF({
+        orientation: node.offsetWidth > node.offsetHeight ? 'landscape' : 'portrait',
+        unit: 'px',
+        format: [node.offsetWidth, node.offsetHeight]
+      });
+      
+      pdf.addImage(dataUrl, 'JPEG', 0, 0, node.offsetWidth, node.offsetHeight);
+      pdf.save(`${app.name.replace(/\s+/g, '_')}_Privacy_Report.pdf`);
+    } catch (err) {
+      console.error("Failed to generate PDF", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   useEffect(() => {
     fetch(`/api/apps/${appId}`)
@@ -119,15 +161,34 @@ export default function AppDetailView() {
             <p className="text-[10px] sm:text-xs text-slate-500">Analyzed {analysisDate}</p>
           </div>
         </div>
-        <button className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-medium transition-colors">
-          <Download size={14} className="sm:w-4 sm:h-4" />
-          <span className="hidden sm:inline">Export Report</span>
-          <span className="sm:hidden">Export</span>
+        <button 
+          onClick={handleExportPDF}
+          disabled={isExporting}
+          className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/50 text-white text-xs sm:text-sm font-medium transition-colors"
+        >
+          {isExporting ? <Loader2 size={14} className="sm:w-4 sm:h-4 animate-spin" /> : <Download size={14} className="sm:w-4 sm:h-4" />}
+          <span className="hidden sm:inline">{isExporting ? 'Generating PDF...' : 'Generate PDF Report'}</span>
+          <span className="sm:hidden">{isExporting ? '...' : 'PDF'}</span>
         </button>
       </div>
 
-      {/* App Identity & Grade Hero */}
-      <section className="bento-card p-4 sm:p-6 lg:p-8 animate-fade-in-up stagger-1">
+      {/* Hidden Printable Report for PDF Export */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        <div ref={reportRef}>
+          <PrintableReport 
+            app={app} 
+            riskDimensionsData={riskDimensionsData} 
+            analysisMetadata={analysisMetadata} 
+            disclosureMismatchData={disclosureMismatchData} 
+            trackersData={trackersData} 
+            networkData={networkData} 
+          />
+        </div>
+      </div>
+
+      <div className="space-y-4 sm:space-y-6 lg:space-y-8 pb-4">
+        {/* App Identity & Grade Hero */}
+        <section className="bento-card p-4 sm:p-6 lg:p-8 animate-fade-in-up stagger-1">
         <div className="flex flex-col items-center gap-5 sm:gap-6 lg:flex-row lg:items-start lg:gap-8">
           {/* App icon */}
           <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xl sm:text-2xl lg:text-3xl font-black shadow-lg shadow-indigo-500/20 shrink-0">
@@ -231,6 +292,7 @@ export default function AppDetailView() {
           <p className="text-[10px] sm:text-xs text-slate-600 font-mono break-all">APK Hash: {analysisMetadata.apkHash}</p>
         </div>
       </section>
+      </div>
     </div>
   );
 }
