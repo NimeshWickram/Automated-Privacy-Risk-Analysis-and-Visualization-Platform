@@ -1,17 +1,18 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Shield, LayoutDashboard, Search, GitCompareArrows, Menu, X, UploadCloud } from 'lucide-react';
+import { NavLink, Outlet, useLocation, Link } from 'react-router-dom';
+import { Shield, LayoutDashboard, Search, GitCompareArrows, Menu, X, Bot, UploadCloud } from 'lucide-react';
 import UploadModal from './UploadModal';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/analyze', label: 'App Analysis', matchPrefix: '/analyze', icon: Search },
   { to: '/compare', label: 'Compare Apps', icon: GitCompareArrows },
+  { to: '/chatbot', label: 'AI Advisor', icon: Bot },
 ];
 
 export default function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const location = useLocation();
 
   return (
@@ -54,13 +55,20 @@ export default function Layout() {
 
           {/* Action Button & Mobile Toggle */}
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setIsUploadOpen(true)}
-              className="hidden sm:flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all hover:-translate-y-0.5 whitespace-nowrap"
+            <button
+              onClick={() => setUploadOpen(true)}
+              className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 transition-colors whitespace-nowrap"
             >
-              <UploadCloud size={18} className="shrink-0" />
+              <UploadCloud size={16} className="shrink-0 text-slate-300" />
               <span>Analyze APK</span>
             </button>
+            <Link
+              to="/chatbot"
+              className="hidden sm:flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all hover:-translate-y-0.5 whitespace-nowrap"
+            >
+              <Bot size={18} className="shrink-0" />
+              <span>Ask AI</span>
+            </Link>
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -90,16 +98,6 @@ export default function Layout() {
                 </NavLink>
               );
             })}
-            <button 
-              onClick={() => {
-                setMobileMenuOpen(false);
-                setIsUploadOpen(true);
-              }}
-              className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg"
-            >
-              <UploadCloud size={18} />
-              Analyze APK
-            </button>
           </div>
         )}
       </div>
@@ -115,8 +113,8 @@ export default function Layout() {
           Privacy Risk Analysis Platform — v2.1.0
         </p>
       </footer>
-
-      <UploadModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
+      
+      <UploadModal isOpen={uploadOpen} onClose={() => setUploadOpen(false)} />
     </div>
   );
 }

@@ -1,8 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { TrendingUp, Shield, AlertTriangle, CheckCircle, ArrowRight, Search, Eye, Activity, BarChart3, UploadCloud, Loader2 } from 'lucide-react';
-import UploadModal from '../components/UploadModal';
+import { TrendingUp, Shield, AlertTriangle, CheckCircle, ArrowRight, Search, Activity, BarChart3, Database, CreditCard, Loader2, Bot } from 'lucide-react';
 
 const gradeStyles = {
   A: 'bg-teal-500/15 text-teal-300 border border-teal-500/30',
@@ -30,7 +29,6 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [riskFilter, setRiskFilter] = useState('All');
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
 
   useEffect(() => {
     fetch('/api/apps')
@@ -91,14 +89,14 @@ export default function Dashboard() {
           Platform <span className="gradient-text">Overview</span>
         </h1>
         <p className="text-sm sm:text-base text-slate-400 font-medium max-w-2xl leading-relaxed">
-          Monitor the privacy risks of educational applications through automated, state-of-the-art static and dynamic analysis.
+          Privacy risk analysis of educational Android applications — analyzing personal data collection, payment security, and security vulnerabilities.
         </p>
       </div>
 
       {/* Bento Grid */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-fade-in-up stagger-2">
         
-        {/* STATS ROW (4 Cards) */}
+        {/* STATS ROW (6 Cards) */}
         <StatCard
           icon={Shield}
           label="Total Analyzed"
@@ -106,7 +104,7 @@ export default function Dashboard() {
           accent="text-indigo-400"
           bg="bg-indigo-500/10"
           borderHover="hover:border-indigo-500/30"
-          colSpan="md:col-span-6 lg:col-span-3"
+          colSpan="md:col-span-4 lg:col-span-2"
         />
         <StatCard
           icon={Activity}
@@ -116,25 +114,43 @@ export default function Dashboard() {
           accent="text-amber-400"
           bg="bg-amber-500/10"
           borderHover="hover:border-amber-500/30"
-          colSpan="md:col-span-6 lg:col-span-3"
+          colSpan="md:col-span-4 lg:col-span-2"
         />
         <StatCard
           icon={AlertTriangle}
-          label="Critical Risk"
-          value={data.riskDistribution.find(d => d.name === 'High Risk')?.value || 0}
+          label="Security Incidents"
+          value={data.totalIncidents || 0}
           accent="text-rose-400"
           bg="bg-rose-500/10"
           borderHover="hover:border-rose-500/30"
-          colSpan="md:col-span-6 lg:col-span-3"
+          colSpan="md:col-span-4 lg:col-span-2"
         />
         <StatCard
-          icon={CheckCircle}
-          label="Safe Apps"
-          value={data.riskDistribution.find(d => d.name === 'Low Risk')?.value || 0}
+          icon={Database}
+          label="Data Types Tracked"
+          value={data.totalPersonalDataItems || 0}
+          accent="text-purple-400"
+          bg="bg-purple-500/10"
+          borderHover="hover:border-purple-500/30"
+          colSpan="md:col-span-4 lg:col-span-2"
+        />
+        <StatCard
+          icon={CreditCard}
+          label="Payment Methods"
+          value={data.totalPaymentMethods || 0}
           accent="text-teal-400"
           bg="bg-teal-500/10"
           borderHover="hover:border-teal-500/30"
-          colSpan="md:col-span-6 lg:col-span-3"
+          colSpan="md:col-span-4 lg:col-span-2"
+        />
+        <StatCard
+          icon={CheckCircle}
+          label="Low Risk Apps"
+          value={data.riskDistribution.find(d => d.name === 'Low Risk')?.value || 0}
+          accent="text-emerald-400"
+          bg="bg-emerald-500/10"
+          borderHover="hover:border-emerald-500/30"
+          colSpan="md:col-span-4 lg:col-span-2"
         />
 
         {/* RISK DISTRIBUTION CHART */}
@@ -151,7 +167,7 @@ export default function Dashboard() {
           
           <div className="flex flex-col sm:flex-row items-center justify-around gap-8 flex-1">
             <div className="w-full sm:w-64 h-64 shrink-0 flex items-center justify-center relative">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <PieChart>
                   <Pie
                     data={data.riskDistribution}
@@ -197,21 +213,21 @@ export default function Dashboard() {
           <p className="text-sm text-slate-400 mb-6">Common platform tasks</p>
           
           <div className="space-y-3 flex-1 flex flex-col justify-center">
-            <button
-              onClick={() => setIsUploadOpen(true)}
+            <Link
+              to="/chatbot"
               className="flex items-center justify-between p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 hover:border-indigo-500/40 transition-all group text-left"
             >
               <div className="flex items-center gap-4">
                 <div className="p-2.5 bg-indigo-500/20 rounded-xl text-indigo-400">
-                  <UploadCloud size={20} />
+                  <Bot size={20} />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-100">Analyze APK</p>
-                  <p className="text-xs text-slate-500 font-medium">Upload new app</p>
+                  <p className="text-sm font-bold text-slate-100">AI Privacy Advisor</p>
+                  <p className="text-xs text-slate-500 font-medium">Ask about risks</p>
                 </div>
               </div>
               <ArrowRight size={18} className="text-slate-600 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
-            </button>
+            </Link>
             
             <Link
               to="/compare"
@@ -239,9 +255,9 @@ export default function Dashboard() {
             <div>
               <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-3 mb-2">
                 <div className="p-2 rounded-xl bg-slate-800/80 text-teal-400"><Search size={18} /></div>
-                Analysis History
+                Analyzed Applications
               </h2>
-              <p className="text-sm text-slate-400">Review past scan reports and risk evaluations</p>
+              <p className="text-sm text-slate-400">Educational apps analyzed for privacy and security risks</p>
             </div>
             
             <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -279,16 +295,17 @@ export default function Dashboard() {
               <thead className="bg-slate-900/40 text-xs uppercase font-bold text-slate-500 tracking-wider">
                 <tr>
                   <th className="py-4 px-8 font-semibold">Application</th>
-                  <th className="py-4 px-6 font-semibold">Category</th>
+                  <th className="py-4 px-6 font-semibold">Target Age</th>
                   <th className="py-4 px-6 font-semibold text-center">Score</th>
+                  <th className="py-4 px-6 font-semibold text-center">Data Items</th>
+                  <th className="py-4 px-6 font-semibold text-center">Incidents</th>
                   <th className="py-4 px-6 font-semibold">Risk Level</th>
-                  <th className="py-4 px-8 font-semibold text-right">Date</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/30">
                 {filteredApps.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="py-12 text-center text-slate-500 font-medium">No records found.</td>
+                    <td colSpan="6" className="py-12 text-center text-slate-500 font-medium">No records found.</td>
                   </tr>
                 ) : filteredApps.map((app) => (
                   <tr key={app.id} className="hover:bg-slate-800/20 transition-colors group">
@@ -299,7 +316,7 @@ export default function Dashboard() {
                       </Link>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="px-3 py-1 bg-slate-800/60 rounded-lg text-xs font-semibold text-slate-300 border border-slate-700/30">{app.category}</span>
+                      <span className="px-3 py-1 bg-slate-800/60 rounded-lg text-xs font-semibold text-slate-300 border border-slate-700/30">{app.targetAge || app.category}</span>
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center justify-center gap-3">
@@ -312,6 +329,14 @@ export default function Dashboard() {
                         </div>
                       </div>
                     </td>
+                    <td className="py-4 px-6 text-center">
+                      <span className="font-bold text-purple-400">{app.personalDataItems || 0}</span>
+                    </td>
+                    <td className="py-4 px-6 text-center">
+                      <span className={`font-bold ${app.incidentCount > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                        {app.incidentCount || 0}
+                      </span>
+                    </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
                         <span className="status-dot" style={{
@@ -319,9 +344,6 @@ export default function Dashboard() {
                         }} />
                         <span className="font-bold text-slate-300">{app.riskLevel}</span>
                       </div>
-                    </td>
-                    <td className="py-4 px-8 text-right text-slate-500 font-medium text-xs">
-                      {app.analyzedAt}
                     </td>
                   </tr>
                 ))}
@@ -351,7 +373,10 @@ export default function Dashboard() {
                     }} />
                     <span className="text-xs font-bold text-slate-300">{app.riskLevel}</span>
                   </div>
-                  <span className="text-xs text-slate-500 font-medium">{app.analyzedAt}</span>
+                  <div className="flex items-center gap-3 text-xs text-slate-500">
+                    <span>📊 {app.personalDataItems || 0} data</span>
+                    <span>⚠️ {app.incidentCount || 0} incidents</span>
+                  </div>
                 </div>
               </Link>
             ))}
@@ -359,8 +384,6 @@ export default function Dashboard() {
 
         </div>
       </div>
-      
-      <UploadModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
     </div>
   );
 }
@@ -375,7 +398,7 @@ function StatCard({ icon: Icon, label, value, suffix = '', accent, bg, borderHov
       </div>
       <div>
         <div className="flex items-baseline gap-1">
-          <span className={`text-4xl lg:text-5xl font-black tracking-tight ${accent}`}>{value}</span>
+          <span className={`text-3xl lg:text-4xl font-black tracking-tight ${accent}`}>{value}</span>
           {suffix && <span className="text-sm font-bold text-slate-500">{suffix}</span>}
         </div>
         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2">{label}</p>

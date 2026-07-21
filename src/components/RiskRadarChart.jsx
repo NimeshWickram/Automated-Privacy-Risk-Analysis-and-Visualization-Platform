@@ -23,7 +23,7 @@ export default function RiskRadarChart({ dimensions, height = 260 }) {
         <p className="text-xs sm:text-sm text-slate-400 mb-3 sm:mb-4">Higher values indicate greater risk in each category</p>
       </div>
       <div className="flex-1 flex items-center justify-center">
-        <ResponsiveContainer width="100%" height={height}>
+        <ResponsiveContainer width="100%" height={height} minWidth={0}>
           <RadarChart data={dimensions} cx="50%" cy="50%" outerRadius="70%">
             <PolarGrid stroke="#334155" strokeDasharray="3 3" />
             <PolarAngleAxis dataKey="dimension" tick={{ fill: '#94a3b8', fontSize: isLarge ? 12 : 11 }} />

@@ -1,240 +1,241 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { GitCompareArrows, Loader2 } from 'lucide-react';
+import { GitCompareArrows, Shield, AlertTriangle, Database, CreditCard, ShieldCheck, ShieldX, Loader2, CheckCircle, XCircle } from 'lucide-react';
+
+const APP_COLORS = ['#818cf8', '#c084fc', '#2dd4bf', '#f59e0b'];
+
 const gradeStyles = {
-  A: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-  B: 'bg-green-500/15 text-green-400 border-green-500/30',
-  C: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-  D: 'bg-orange-500/15 text-orange-400 border-orange-500/30',
-  F: 'bg-red-500/15 text-red-400 border-red-500/30',
+  A: 'bg-teal-500/15 text-teal-300 border border-teal-500/30',
+  B: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30',
+  C: 'bg-amber-500/15 text-amber-300 border border-amber-500/30',
+  D: 'bg-orange-500/15 text-orange-300 border border-orange-500/30',
+  F: 'bg-rose-500/15 text-rose-300 border border-rose-500/30',
 };
 
-const radarColors = ['#818cf8', '#f472b6', '#34d399'];
-
 export default function CompareApps() {
-  const [comparisonApps, setComparisonApps] = useState([]);
-  const [selectedApps, setSelectedApps] = useState([0, 1]);
+  const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/compare')
-      .then(res => res.json())
+    fetch('/api/compare')
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch comparison data');
+        return res.json();
+      })
       .then(data => {
-        setComparisonApps(data);
-        if (data.length < 2) {
-            setSelectedApps([0, 0]);
-        }
+        setApps(data);
+        setSelectedIds(data.map(a => a.id));
         setLoading(false);
       })
       .catch(err => {
-        console.error(err);
+        setError(err.message);
         setLoading(false);
       });
   }, []);
 
-  if (loading) {
-    return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin text-indigo-500 w-8 h-8" /></div>;
-  }
+  const selectedApps = useMemo(() => apps.filter(a => selectedIds.includes(a.id)), [apps, selectedIds]);
 
-  if (comparisonApps.length === 0) {
-    return <div className="text-center text-slate-400 mt-10">No apps available for comparison. Please upload an APK first.</div>;
-  }
-
-  const apps = selectedApps.map(i => comparisonApps[i] || comparisonApps[0]);
-
-  // Build radar data
-  const dimensions = ['Permissions', 'Trackers', 'Network', 'Storage', 'Child Safety'];
-  const radarData = dimensions.map(dim => {
-    const entry = { dimension: dim };
-    apps.forEach((app) => {
-      entry[app.name] = app.dimensions[dim];
+  const radarData = useMemo(() => {
+    if (selectedApps.length === 0) return [];
+    const dimensions = ['Permissions', 'Trackers', 'Data Sharing', 'Payment Risk', 'Incidents'];
+    return dimensions.map(dim => {
+      const item = { dimension: dim };
+      selectedApps.forEach(app => {
+        item[app.name] = app.dimensions?.[dim] || 0;
+      });
+      return item;
     });
-    return entry;
-  });
+  }, [selectedApps]);
 
-  const toggleApp = (slotIndex, appIndex) => {
-    const newSelection = [...selectedApps];
-    newSelection[slotIndex] = appIndex;
-    setSelectedApps(newSelection);
+  const toggleApp = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
   };
 
-  const comparisonMetrics = [
-    { label: 'Risk Score', key: 'riskScore', format: (v) => `${v}/100`, colorFn: (v) => v > 60 ? 'text-red-400' : v > 40 ? 'text-amber-400' : 'text-emerald-400' },
-    { label: 'Grade', key: 'riskGrade', format: (v) => v, isBadge: true },
-    { label: 'Total Permissions', key: 'permissions', format: (v) => v.total, colorFn: () => 'text-slate-200' },
-    { label: 'Dangerous Permissions', key: 'permissions', format: (v) => v.dangerous, colorFn: (v) => v > 5 ? 'text-red-400' : v > 2 ? 'text-amber-400' : 'text-emerald-400', rawValue: (v) => v.dangerous },
-    { label: 'Trackers', key: 'trackers', format: (v) => v, colorFn: (v) => v > 5 ? 'text-red-400' : v > 2 ? 'text-amber-400' : 'text-emerald-400' },
-    { label: 'Encrypted Endpoints', key: 'encryptedEndpoints', format: (v) => v, colorFn: (v) => v === '100%' ? 'text-emerald-400' : 'text-amber-400' },
-    { label: 'Disclosure Match', key: 'disclosureMatch', format: (v) => v, colorFn: (v) => parseInt(v) > 80 ? 'text-emerald-400' : parseInt(v) > 50 ? 'text-amber-400' : 'text-red-400' },
-    { label: 'Child Safety', key: 'childSafety', format: (v) => v, colorFn: (v) => v === 'Compliant' ? 'text-emerald-400' : v === 'Partial' ? 'text-amber-400' : 'text-red-400' },
-  ];
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-8 min-h-[60vh]">
+        <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="bento-card border-rose-500/20 p-8 flex flex-col items-center max-w-md text-center">
+          <AlertTriangle className="text-rose-400 w-12 h-12 mb-4" />
+          <h2 className="text-xl font-bold text-white mb-2">Failed to load data</h2>
+          <p className="text-slate-400 text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Find the safest app
+  const safestApp = selectedApps.length > 0 ? selectedApps.reduce((a, b) => a.riskScore > b.riskScore ? a : b) : null;
 
   return (
-    <div className="responsive-container py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6 lg:space-y-8">
-      {/* Title */}
-      <div className="animate-fade-in-up">
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
-          <GitCompareArrows size={22} className="text-indigo-400 sm:w-7 sm:h-7" />
-          <span>Compare <span className="gradient-text">Apps</span></span>
+    <div className="responsive-container py-4 sm:py-6 space-y-6">
+      {/* Header */}
+      <div className="animate-fade-in-up stagger-1">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight mb-2">
+          Compare <span className="gradient-text">Applications</span>
         </h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">Side-by-side privacy risk comparison</p>
+        <p className="text-sm sm:text-base text-slate-400 font-medium">
+          Side-by-side privacy and security comparison of educational apps
+        </p>
       </div>
 
-      {/* App selector */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 animate-fade-in-up stagger-1">
-        {selectedApps.map((appIdx, slotIdx) => (
-          <div key={slotIdx} className="glass-card p-3 sm:p-4">
-            <label className="text-[10px] sm:text-xs text-slate-500 font-medium uppercase tracking-wider">App {slotIdx + 1}</label>
-            <select
-              value={appIdx}
-              onChange={(e) => toggleApp(slotIdx, parseInt(e.target.value))}
-              className="w-full mt-1.5 px-3 py-2 bg-slate-800/60 border border-slate-700/40 rounded-xl text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-indigo-500/50 transition-colors appearance-none cursor-pointer"
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
-            >
-              {comparisonApps.map((app, i) => (
-                <option key={i} value={i}>{app.name} — {app.developer}</option>
-              ))}
-            </select>
-            <div className="flex items-center gap-2 mt-2">
-              <span className={`inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-lg border font-bold text-[10px] sm:text-xs ${gradeStyles[comparisonApps[appIdx].riskGrade]}`}>
-                {comparisonApps[appIdx].riskGrade}
-              </span>
-              <span className="text-xs sm:text-sm text-slate-400">{comparisonApps[appIdx].name}</span>
-            </div>
-          </div>
+      {/* App Selector */}
+      <div className="flex flex-wrap gap-2 animate-fade-in-up stagger-2">
+        {apps.map((app, i) => (
+          <button
+            key={app.id}
+            onClick={() => toggleApp(app.id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
+              selectedIds.includes(app.id)
+                ? 'border-indigo-500/40 bg-indigo-500/10 text-white'
+                : 'border-slate-700/30 bg-slate-800/30 text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: APP_COLORS[i] }} />
+            {app.name}
+          </button>
         ))}
       </div>
 
-      {/* Side-by-side Chart and Table layout on desktop */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in-up stagger-2">
-        {/* Left Column: Radar Chart */}
-        <div className="glass-card p-6 lg:col-span-5 flex flex-col justify-between">
-          <div>
-            <h2 className="text-base sm:text-lg font-semibold text-slate-200 mb-1">Risk Dimension Comparison</h2>
-            <p className="text-xs sm:text-sm text-slate-400 mb-6">Higher values indicate greater privacy risk</p>
-          </div>
-          <div className="flex-1 flex items-center justify-center">
-            <ResponsiveContainer width="100%" height={380}>
-              <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
-                <PolarGrid stroke="#334155" strokeDasharray="3 3" />
-                <PolarAngleAxis dataKey="dimension" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} />
-                <Tooltip content={<CompareTooltip />} />
-                {apps.map((app, i) => (
-                  <Radar
-                    key={app.name}
-                    name={app.name}
-                    dataKey={app.name}
-                    stroke={radarColors[i]}
-                    fill={radarColors[i]}
-                    fillOpacity={0.15}
-                    strokeWidth={2}
-                    dot={{ r: 3, fill: radarColors[i] }}
-                  />
-                ))}
-                <Legend wrapperStyle={{ fontSize: '12px', color: '#94a3b8', paddingTop: '10px' }} />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
+      {selectedApps.length === 0 ? (
+        <div className="bento-card p-12 text-center">
+          <GitCompareArrows className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+          <p className="text-slate-400 text-sm">Select at least one app to compare</p>
         </div>
-
-        {/* Right Column: Detailed comparison table */}
-        <div className="glass-card p-6 lg:col-span-7 flex flex-col justify-between">
-          <div>
-            <h2 className="text-base sm:text-lg font-semibold text-slate-200 mb-1">Detailed Comparison</h2>
-            <p className="text-xs sm:text-sm text-slate-400 mb-6">Side-by-side comparison of specific metrics</p>
-          </div>
-          
-          {/* Desktop table */}
-          <div className="hidden sm:block overflow-hidden rounded-xl border border-slate-800/60 bg-slate-900/40 flex-1">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-slate-800/40 border-b border-slate-800/80 text-slate-300">
-                  <th className="text-left text-xs font-semibold uppercase tracking-wider py-3.5 px-4 text-slate-400">Metric</th>
-                  {apps.map((app, i) => (
-                    <th key={i} className="text-center text-xs font-semibold uppercase tracking-wider py-3.5 px-4 text-slate-400">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: radarColors[i] }} />
-                        {app.name}
-                      </div>
-                    </th>
+      ) : (
+        <>
+          {/* Radar Chart */}
+          <div className="bento-card p-6 animate-fade-in-up stagger-3">
+            <div className="mb-4">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Shield size={18} className="text-indigo-400" />
+                Risk Dimensions Comparison
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-400 mb-6">Higher values indicate greater privacy risk</p>
+            </div>
+            <div className="flex-1 flex items-center justify-center">
+              <ResponsiveContainer width="100%" height={380} minWidth={0}>
+                <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
+                  <PolarGrid stroke="#334155" strokeDasharray="3 3" />
+                  <PolarAngleAxis dataKey="dimension" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#475569', fontSize: 10 }} />
+                  {selectedApps.map((app, i) => (
+                    <Radar
+                      key={app.id}
+                      name={app.name}
+                      dataKey={app.name}
+                      stroke={APP_COLORS[apps.findIndex(a => a.id === app.id)]}
+                      fill={APP_COLORS[apps.findIndex(a => a.id === app.id)]}
+                      fillOpacity={0.15}
+                      strokeWidth={2}
+                    />
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {comparisonMetrics.map((metric) => (
-                  <tr key={metric.label} className="border-b border-slate-800/30 hover:bg-slate-800/20 transition-premium duration-150">
-                    <td className="py-3 px-4 text-slate-300 font-semibold text-xs sm:text-sm">{metric.label}</td>
-                    {apps.map((app, i) => {
-                      const val = app[metric.key];
-                      const display = metric.format(val);
-                      const rawVal = metric.rawValue ? metric.rawValue(val) : (typeof val === 'object' ? null : val);
-                      const colorClass = metric.colorFn ? metric.colorFn(rawVal ?? val) : 'text-slate-200';
-                      return (
-                        <td key={i} className="py-3 px-4 text-center">
-                          {metric.isBadge ? (
-                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border font-bold text-sm shadow-sm ${gradeStyles[display]}`}>
-                              {display}
-                            </span>
-                          ) : (
-                            <span className={`font-semibold ${colorClass}`}>{display}</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }}
+                    itemStyle={{ color: '#e2e8f0', fontSize: '12px' }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
-          {/* Mobile stacked comparison */}
-          <div className="sm:hidden space-y-2.5">
-            {comparisonMetrics.map((metric) => (
-              <div key={metric.label} className="p-3 rounded-xl bg-slate-800/20 border border-slate-700/15">
-                <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mb-2">{metric.label}</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {apps.map((app, i) => {
-                    const val = app[metric.key];
-                    const display = metric.format(val);
-                    const rawVal = metric.rawValue ? metric.rawValue(val) : (typeof val === 'object' ? null : val);
-                    const colorClass = metric.colorFn ? metric.colorFn(rawVal ?? val) : 'text-slate-200';
-                    return (
-                      <div key={i} className="text-center">
-                        <p className="text-[10px] text-slate-500 mb-0.5 truncate">{app.name}</p>
-                        {metric.isBadge ? (
-                          <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg border font-bold text-xs ${gradeStyles[display]}`}>
-                            {display}
-                          </span>
-                        ) : (
-                          <span className={`text-sm font-semibold ${colorClass}`}>{display}</span>
-                        )}
-                      </div>
-                    );
-                  })}
+          {/* Comparison Table */}
+          <div className="bento-card overflow-hidden animate-fade-in-up stagger-4">
+            <div className="p-5 border-b border-slate-700/30">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <GitCompareArrows size={18} className="text-teal-400" />
+                Detailed Comparison
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-900/40 text-xs uppercase text-slate-500 tracking-wider">
+                  <tr>
+                    <th className="py-3 px-4 text-left font-semibold sticky left-0 bg-slate-900/60 backdrop-blur z-10">Metric</th>
+                    {selectedApps.map((app, i) => (
+                      <th key={app.id} className="py-3 px-4 text-center font-semibold whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: APP_COLORS[apps.findIndex(a => a.id === app.id)] }} />
+                          {app.name}
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/30">
+                  <CompareRow label="Risk Score" values={selectedApps.map(a => `${a.riskScore}/100`)} />
+                  <CompareRow label="Risk Grade" values={selectedApps.map(a => a.riskGrade)} isGrade />
+                  <CompareRow label="Target Age" values={selectedApps.map(a => a.targetAge || 'N/A')} />
+                  <CompareRow label="Installs" values={selectedApps.map(a => a.installs || 'N/A')} />
+                  <CompareRow label="Total Permissions" values={selectedApps.map(a => a.permissions?.total || 0)} />
+                  <CompareRow label="Dangerous Permissions" values={selectedApps.map(a => a.permissions?.dangerous || 0)} highlight="high" />
+                  <CompareRow label="Trackers" values={selectedApps.map(a => a.trackers || 0)} highlight="high" />
+                  <CompareRow label="Personal Data Items" values={selectedApps.map(a => a.personalDataItems || 0)} highlight="high" />
+                  <CompareRow label="Shared with 3rd Parties" values={selectedApps.map(a => a.sharedDataItems || 0)} highlight="high" />
+                  <CompareRow label="Payment Methods" values={selectedApps.map(a => a.paymentMethods || 0)} />
+                  <CompareRow label="Security Incidents" values={selectedApps.map(a => a.incidents || 0)} highlight="high" />
+                  <CompareRow label="Security Mechanisms" values={selectedApps.map(a => `${a.securityMechanisms?.implemented || 0}/${a.securityMechanisms?.total || 0}`)} />
+                  <CompareRow label="2FA Available" values={selectedApps.map(a => a.has2fa)} isBoolean />
+                  <CompareRow label="Compliance" values={selectedApps.map(a => a.complianceStandards || 'None')} />
+                  <CompareRow label="Avg Prediction Risk" values={selectedApps.map(a => `${a.avgPredictionRisk || 0}%`)} highlight="high" />
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Safest App Highlight */}
+          {safestApp && (
+            <div className="bento-card p-6 border-emerald-500/20 bg-emerald-500/5 animate-fade-in-up stagger-5">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-xl bg-emerald-500/15">
+                  <CheckCircle className="w-6 h-6 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-emerald-300">Safest App: {safestApp.name}</h3>
+                  <p className="text-sm text-slate-400">
+                    With a risk score of {safestApp.riskScore}/100 (Grade {safestApp.riskGrade}), {safestApp.name} demonstrates the best privacy and security practices among the analyzed applications.
+                  </p>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
 
-function CompareTooltip({ active, payload, label }) {
-  if (active && payload && payload.length) {
-    return (
-      <div className="glass-card px-3 py-2 text-sm">
-        <p className="text-slate-200 font-semibold mb-1">{label}</p>
-        {payload.map((entry, i) => (
-          <p key={i} style={{ color: entry.color }} className="text-xs">
-            {entry.name}: <span className="font-bold">{entry.value}</span>/100
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
+function CompareRow({ label, values, highlight, isGrade, isBoolean }) {
+  return (
+    <tr className="hover:bg-slate-800/20 transition-colors">
+      <td className="py-3 px-4 text-slate-400 font-medium whitespace-nowrap sticky left-0 bg-slate-900/30 backdrop-blur">{label}</td>
+      {values.map((val, i) => (
+        <td key={i} className="py-3 px-4 text-center">
+          {isGrade ? (
+            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg font-black text-sm ${gradeStyles[val] || ''}`}>{val}</span>
+          ) : isBoolean ? (
+            val ? <CheckCircle size={16} className="text-emerald-400 mx-auto" /> : <XCircle size={16} className="text-rose-400 mx-auto" />
+          ) : (
+            <span className={`font-semibold ${
+              highlight === 'high' && typeof val === 'number' && val > 0 ? 'text-amber-400' : 'text-slate-200'
+            }`}>
+              {val}
+            </span>
+          )}
+        </td>
+      ))}
+    </tr>
+  );
 }
