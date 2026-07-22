@@ -26,6 +26,7 @@ class AppAnalysis(Base):
     risk_score = Column(Integer)
     risk_grade = Column(String)
     risk_level = Column(String)
+    risk_dimensions_json = Column(Text, default="{}")
 
     # Security overview fields
     encryption_protocol = Column(String, default="")
@@ -54,6 +55,19 @@ class AppPermission(Base):
     description = Column(String)
     justified = Column(Boolean, default=False)
 
+    # ── Context-Aware Permission Analysis (Feature B) ──
+    necessity_score = Column(Integer, default=50)           # 0-100: how necessary for educational purpose
+    educational_justification = Column(String, default="")  # justified | conditional | excessive | unnecessary
+    sdk_attribution = Column(String, default="app")         # "app" or SDK name
+    risk_category = Column(String, default="other")         # identity, location, media_capture, etc.
+    privacy_risk_level = Column(String, default="medium")   # low | medium | high | critical
+    is_actually_used = Column(Boolean, default=None, nullable=True)  # None = unknown
+    alternative_permission = Column(Text, default="")       # JSON string: {"alternative": ..., "reason": ...}
+    explanation = Column(Text, default="")                  # Human-readable context explanation
+    child_risk_multiplier = Column(Float, default=1.0)      # 1.0-2.0 amplification for child apps
+    base_risk_weight = Column(Float, default=0.3)           # 0.0-1.0 base privacy risk
+    adjusted_risk_weight = Column(Float, default=0.3)       # 0.0-1.0 after child multiplier
+
     app = relationship("AppAnalysis", back_populates="permissions")
 
 
@@ -66,6 +80,22 @@ class AppTracker(Base):
     risk = Column(String)
     description = Column(String)
     category = Column(String)
+
+    # ── SDK & Tracker Intelligence (Feature D) ──
+    provider = Column(String, default="Unknown")
+    privacy_impact = Column(String, default="medium")        # low | medium | high | critical
+    data_accessed = Column(Text, default="[]")               # JSON array of data types
+    permissions_connected = Column(Text, default="[]")       # JSON array of permissions
+    network_domains = Column(Text, default="[]")             # JSON array of domains
+    child_appropriate = Column(Boolean, default=None, nullable=True)
+    coppa_mode_available = Column(Boolean, default=False)
+    gdpr_compliant = Column(Boolean, default=True)
+    is_disclosed = Column(Boolean, default=False)            # In Data Safety declaration
+    disclosure_status = Column(String, default="unknown")    # disclosed | undisclosed | unknown
+    risk_score = Column(Integer, default=50)                 # 0-100 SDK risk score
+    child_risk_multiplier = Column(Float, default=1.0)
+    privacy_config_issues = Column(Text, default="[]")       # JSON array of issues
+    recommendation = Column(Text, default="")
 
     app = relationship("AppAnalysis", back_populates="trackers")
 

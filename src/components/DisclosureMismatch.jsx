@@ -33,12 +33,14 @@ function MismatchRow({ item, index }) {
             </div>
             <div className="mt-1.5 sm:mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
               <div>
-                <span className="text-slate-500 text-[10px] sm:text-xs uppercase tracking-wider font-semibold">Play Store Says:</span>
-                <p className="text-slate-300 mt-0.5">{item.playStoreClaim}</p>
+                <span className="text-slate-500 text-[10px] sm:text-xs uppercase tracking-wider font-semibold">Description:</span>
+                <p className="text-slate-300 mt-0.5 leading-relaxed">{item.description}</p>
               </div>
               <div>
-                <span className="text-slate-500 text-[10px] sm:text-xs uppercase tracking-wider font-semibold">Analysis Found:</span>
-                <p className={`mt-0.5 ${item.isMismatch ? config.text : 'text-emerald-400'} font-semibold`}>{item.analysisResult}</p>
+                <span className="text-slate-500 text-[10px] sm:text-xs uppercase tracking-wider font-semibold">Mismatch Type:</span>
+                <p className={`mt-0.5 ${item.isMismatch ? config.text : 'text-emerald-400'} font-semibold capitalize`}>
+                  {item.mismatchType?.replace('_', ' ')}
+                </p>
               </div>
             </div>
           </div>
@@ -57,7 +59,28 @@ function MismatchRow({ item, index }) {
 }
 
 export default function DisclosureMismatch({ data }) {
-  const mismatches = data.items.filter(i => i.isMismatch).length;
+  const items = data?.list || [];
+  const mismatches = items.length;
+  
+  if (items.length === 0) {
+    return (
+      <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5 sm:p-6 backdrop-blur-xl">
+        <h2 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2 mb-4">
+          <CheckCircle size={20} className="text-emerald-400" />
+          No Disclosure Mismatches Detected
+        </h2>
+        <p className="text-sm text-slate-400">
+          The application's technical behavior is consistent with its privacy policy and Google Play Data Safety declaration.
+        </p>
+      </div>
+    );
+  }
+
+  // Ensure isMismatch is set for styling
+  const formattedItems = items.map(item => ({
+    ...item,
+    isMismatch: true
+  }));
   
   // SVG Circle parameters
   const radius = 45;
@@ -135,9 +158,9 @@ export default function DisclosureMismatch({ data }) {
         </div>
 
         {/* Right Columns - Disclosure List */}
-        <div className="lg:col-span-2 space-y-3 max-h-[380px] sm:max-h-[420px] overflow-y-auto pr-1">
-          {data.items.map((item, i) => (
-            <MismatchRow key={i} item={item} index={i} />
+        <div className="lg:col-span-2 space-y-3 sm:space-y-4 relative">
+          {formattedItems.map((item, index) => (
+            <MismatchRow key={item.id || index} item={item} index={index} />
           ))}
         </div>
         

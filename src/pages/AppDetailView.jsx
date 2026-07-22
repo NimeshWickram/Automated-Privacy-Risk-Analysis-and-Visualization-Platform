@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Download, Package, Star, Users, Hash, ShieldCheck, Clock, Loader2, Database, CreditCard, AlertTriangle, TrendingUp, Shield, Bot } from 'lucide-react';
-import domtoimage from 'dom-to-image-more';
+import { ArrowLeft, Download, Package, Star, Users, Hash, ShieldCheck, Clock, Loader2, Database, CreditCard, AlertTriangle, TrendingUp, Shield, Bot, Lock, Fingerprint, Search, Sparkles } from 'lucide-react';
+import * as htmlToImage from 'html-to-image';
 import jsPDF from 'jspdf';
 import RiskGradeBadge from '../components/RiskGradeBadge';
 import RiskRadarChart from '../components/RiskRadarChart';
@@ -13,9 +13,17 @@ import PaymentSecurityTab from '../components/PaymentSecurityTab';
 import SecurityMechanismsTab from '../components/SecurityMechanismsTab';
 import IncidentTimeline from '../components/IncidentTimeline';
 import RiskPredictions from '../components/RiskPredictions';
+import ContextAwarePermissionsTab from '../components/ContextAwarePermissionsTab';
+import SDKIntelligenceTab from '../components/SDKIntelligenceTab';
+import EvidenceSourcesTab from '../components/EvidenceSourcesTab';
+import LLMReportTab from '../components/LLMReportTab';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: Shield },
+  { id: 'ai-report', label: 'AI Educator Brief', icon: Sparkles },
+  { id: 'permissions', label: 'Permissions Context', icon: Lock },
+  { id: 'evidence', label: 'Evidence Sources', icon: Search },
+  { id: 'sdk-intelligence', label: 'SDK Intelligence', icon: Fingerprint },
   { id: 'personal-data', label: 'Personal Data', icon: Database },
   { id: 'payment', label: 'Payment Security', icon: CreditCard },
   { id: 'security', label: 'Security Mechanisms', icon: ShieldCheck },
@@ -40,27 +48,19 @@ export default function AppDetailView() {
       const node = reportRef.current;
       const scale = 2;
       
-      const param = {
-        height: node.offsetHeight * scale,
-        width: node.offsetWidth * scale,
-        style: {
-          transform: `scale(${scale})`,
-          transformOrigin: 'top left',
-          width: `${node.offsetWidth}px`,
-          height: `${node.offsetHeight}px`
-        },
-        bgcolor: '#0f172a'
-      };
-      
-      const dataUrl = await domtoimage.toJpeg(node, param);
+      const dataUrl = await htmlToImage.toJpeg(node, {
+        quality: 1.0,
+        pixelRatio: scale,
+        backgroundColor: '#0f172a'
+      });
       
       const pdf = new jsPDF({
         orientation: node.offsetWidth > node.offsetHeight ? 'landscape' : 'portrait',
         unit: 'px',
-        format: [node.offsetWidth, node.offsetHeight]
+        format: [node.offsetWidth * scale, node.offsetHeight * scale]
       });
       
-      pdf.addImage(dataUrl, 'JPEG', 0, 0, node.offsetWidth, node.offsetHeight);
+      pdf.addImage(dataUrl, 'JPEG', 0, 0, node.offsetWidth * scale, node.offsetHeight * scale);
       pdf.save(`${app.name.replace(/\s+/g, '_')}_Privacy_Report.pdf`);
     } catch (err) {
       console.error("Failed to generate PDF", err);
@@ -282,9 +282,15 @@ export default function AppDetailView() {
                     <h3 className="text-base sm:text-lg font-semibold text-slate-200 flex items-center gap-2 mb-1">
                       <ShieldCheck size={18} className="text-indigo-400 sm:w-5 sm:h-5" /> Permissions Overview
                     </h3>
-                    <p className="text-xs sm:text-sm text-slate-400 mb-4">
+                    <p className="text-xs sm:text-sm text-slate-400 mb-2">
                       {app.permissions?.total || 0} declared, {app.permissions?.dangerous || 0} marked dangerous
                     </p>
+                    <button 
+                      onClick={() => setActiveTab('permissions')}
+                      className="text-[10px] sm:text-xs text-indigo-400 hover:text-indigo-300 font-semibold uppercase tracking-wide flex items-center gap-1 mb-4 w-fit bg-indigo-500/10 px-2 py-1 rounded-md transition-colors"
+                    >
+                      View Full Context & Necessity Scores <ArrowLeft size={12} className="rotate-180" />
+                    </button>
                   </div>
                   <div className="space-y-2 max-h-[345px] overflow-y-auto pr-1 flex-1">
                     {app.permissions?.list?.map((perm, i) => (
@@ -349,6 +355,29 @@ export default function AppDetailView() {
                 </div>
               </section>
             </div>
+          )}
+
+          {activeTab === 'ai-report' && (
+            <LLMReportTab 
+              appId={app.id} 
+              initialReport={app.llmReport} 
+              onReportGenerated={(newReport) => setApp(prev => ({...prev, llmReport: newReport}))}
+            />
+          )}
+
+          {activeTab === 'permissions' && (
+            <ContextAwarePermissionsTab data={app.permissions} />
+          )}
+
+          {activeTab === 'evidence' && (
+            <div className="space-y-6">
+              <EvidenceSourcesTab data={app.evidenceSources} />
+              <DisclosureMismatch data={app.disclosureMismatches} />
+            </div>
+          )}
+
+          {activeTab === 'sdk-intelligence' && (
+            <SDKIntelligenceTab data={app.trackers} />
           )}
 
           {activeTab === 'personal-data' && (

@@ -12,6 +12,7 @@ const ANALYSIS_STEPS = [
 
 export default function UploadModal({ isOpen, onClose }) {
   const [file, setFile] = useState(null);
+  const [policyUrl, setPolicyUrl] = useState("");
   const [stepIndex, setStepIndex] = useState(-1);
   const [progress, setProgress] = useState(0);
   const navigate = useNavigate();
@@ -28,6 +29,8 @@ export default function UploadModal({ isOpen, onClose }) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setFile(null);
       // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPolicyUrl("");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStepIndex(-1);
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setProgress(0);
@@ -43,6 +46,9 @@ export default function UploadModal({ isOpen, onClose }) {
           
           const formData = new FormData();
           formData.append("file", file);
+          if (policyUrl) {
+            formData.append("policy_url", policyUrl);
+          }
           
           setProgress(40);
           setStepIndex(2); // Analysis
@@ -132,9 +138,18 @@ export default function UploadModal({ isOpen, onClose }) {
               </div>
               <p className="text-slate-200 font-semibold mb-1">Upload Android APK</p>
               <p className="text-xs text-slate-400 mb-4">Maximum file size: 150MB</p>
-              <span className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors">
+              <span className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors mb-4">
                 Browse Files
               </span>
+              <div className="mt-4" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="url"
+                  placeholder="Privacy Policy URL (Optional)"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors z-20 relative"
+                  value={policyUrl}
+                  onChange={(e) => setPolicyUrl(e.target.value)}
+                />
+              </div>
             </div>
           ) : (
             // Processing State

@@ -13,6 +13,67 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from database import engine, Base, SessionLocal
 import models
+import models_evidence
+import permission_analyzer
+import sdk_analyzer
+import json
+
+def seed_permissions(app_id, raw_perms, category, sdks, target_age=""):
+    perm_dicts = [{"name": n, "description": d, "is_actually_used": j} for n, s, d, j in raw_perms]
+    analysis = permission_analyzer.analyze_all_permissions(perm_dicts, category, sdks, target_age)
+    for p in analysis["permissions"]:
+        alt_json = json.dumps(p["alternative_permission"]) if p.get("alternative_permission") else ""
+        db.add(models.AppPermission(
+            app_id=app_id,
+            name=p["name"],
+            status="dangerous" if p["is_dangerous"] else "normal",
+            description=p["description"],
+            justified=p["educational_justification"] == "justified",
+            necessity_score=p["necessity_score"],
+            educational_justification=p["educational_justification"],
+            sdk_attribution=p["sdk_attribution"],
+            risk_category=p["risk_category"],
+            privacy_risk_level=p["privacy_risk_level"],
+            is_actually_used=p.get("is_actually_used"),
+            alternative_permission=alt_json,
+            explanation=p["explanation"],
+            child_risk_multiplier=p["child_risk_multiplier"],
+            base_risk_weight=p["base_risk_weight"],
+            adjusted_risk_weight=p["adjusted_risk_weight"]
+        ))
+    db.flush()
+
+def seed_trackers(app_id, sdk_names, target_age="", disclosed_sdks=None, detected_permissions=None):
+    """Seed trackers using the SDK analyzer for enriched intelligence data."""
+    analysis = sdk_analyzer.analyze_all_sdks(
+        sdk_names=sdk_names,
+        target_age=target_age,
+        disclosed_sdks=disclosed_sdks or [],
+        detected_permissions=detected_permissions or [],
+    )
+    for sdk in analysis["sdks"]:
+        db.add(models.AppTracker(
+            app_id=app_id,
+            name=sdk["name"],
+            risk=sdk["privacy_impact"],
+            description=sdk["description"],
+            category=sdk["category"],
+            provider=sdk["provider"],
+            privacy_impact=sdk["privacy_impact"],
+            data_accessed=json.dumps(sdk["data_accessed"]),
+            permissions_connected=json.dumps(sdk["permissions_connected"]),
+            network_domains=json.dumps(sdk["network_domains"]),
+            child_appropriate=sdk["child_appropriate"],
+            coppa_mode_available=sdk["coppa_mode_available"],
+            gdpr_compliant=sdk["gdpr_compliant"],
+            is_disclosed=sdk["is_disclosed"],
+            disclosure_status=sdk["disclosure_status"],
+            risk_score=sdk["risk_score"],
+            child_risk_multiplier=sdk["child_risk_multiplier"],
+            privacy_config_issues=json.dumps(sdk["privacy_config_issues"]),
+            recommendation=sdk["recommendation"],
+        ))
+    db.flush()
 
 # Recreate all tables
 Base.metadata.drop_all(bind=engine)
@@ -65,17 +126,18 @@ app1_perms = [
     ("ACCESS_FINE_LOCATION", "dangerous", "Location for exam proctoring", False),
     ("RECORD_AUDIO", "dangerous", "Voice recordings for submissions", True),
 ]
-for name, status, desc, justified in app1_perms:
-    db.add(models.AppPermission(app_id=app1.id, name=name, status=status, description=desc, justified=justified))
+seed_permissions(app1.id, app1_perms, "Education", ["Google Analytics", "Google Firebase", "Google CrashLytics"], "6-18 Years")
 
-# Trackers
-app1_trackers = [
-    ("Google Analytics", "medium", "Usage analytics and crash reporting", "Analytics"),
-    ("Google Firebase", "low", "Push notifications and app performance", "Infrastructure"),
-    ("Google CrashLytics", "low", "Crash and error reporting", "Diagnostics"),
-]
-for name, risk, desc, cat in app1_trackers:
-    db.add(models.AppTracker(app_id=app1.id, name=name, risk=risk, description=desc, category=cat))
+# Trackers — use SDK analyzer for enriched intelligence
+seed_trackers(
+    app1.id,
+    ["Google Firebase Analytics", "Google Firebase Crashlytics", "Firebase Cloud Messaging"],
+    target_age="6-18 Years",
+    disclosed_sdks=["Google Firebase Analytics", "Google Firebase Crashlytics", "Firebase Cloud Messaging"],
+    detected_permissions=["INTERNET", "ACCESS_NETWORK_STATE", "CAMERA", "GET_ACCOUNTS",
+                          "WRITE_EXTERNAL_STORAGE", "READ_EXTERNAL_STORAGE",
+                          "ACCESS_FINE_LOCATION", "RECORD_AUDIO"],
+)
 
 # Personal Data Collection
 app1_data = [
@@ -203,21 +265,19 @@ app2_perms = [
     ("BILLING", "normal", "In-app purchases for Super Duolingo", True),
     ("AD_ID", "dangerous", "Advertising identifier for targeted ads", False),
 ]
-for name, status, desc, justified in app2_perms:
-    db.add(models.AppPermission(app_id=app2.id, name=name, status=status, description=desc, justified=justified))
+seed_permissions(app2.id, app2_perms, "Language Learning", ["Facebook Analytics", "Google AdMob", "Google Firebase", "Amplitude"], "13-100 Years")
 
-# Trackers
-app2_trackers = [
-    ("Facebook Analytics", "high", "User behavior tracking and ad attribution", "Advertising"),
-    ("Google AdMob", "high", "Display advertising SDK", "Advertising"),
-    ("Google Firebase", "medium", "Push notifications and analytics", "Analytics"),
-    ("Amplitude", "medium", "Product analytics and user engagement", "Analytics"),
-    ("Braze", "medium", "Marketing automation and push notifications", "Marketing"),
-    ("Adjust", "high", "Mobile attribution and ad tracking", "Advertising"),
-    ("Sentry", "low", "Error and crash reporting", "Diagnostics"),
-]
-for name, risk, desc, cat in app2_trackers:
-    db.add(models.AppTracker(app_id=app2.id, name=name, risk=risk, description=desc, category=cat))
+# Trackers — use SDK analyzer for enriched intelligence
+seed_trackers(
+    app2.id,
+    ["Facebook SDK", "Google AdMob", "Google Firebase Analytics", "Amplitude",
+     "Braze", "Adjust SDK", "Google Firebase Crashlytics"],
+    target_age="13-100 Years",
+    disclosed_sdks=["Google Firebase Analytics", "Google Firebase Crashlytics", "Amplitude"],
+    detected_permissions=["INTERNET", "ACCESS_NETWORK_STATE", "CAMERA", "RECORD_AUDIO",
+                          "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE",
+                          "ACCESS_FINE_LOCATION", "READ_PHONE_STATE", "AD_ID"],
+)
 
 # Personal Data Collection
 app2_data = [
@@ -341,18 +401,20 @@ app3_perms = [
     ("ACCESS_NETWORK_STATE", "normal", "Check connectivity for offline mode", True),
     ("WRITE_EXTERNAL_STORAGE", "dangerous", "Save offline content and progress", True),
     ("READ_EXTERNAL_STORAGE", "dangerous", "Load saved content", True),
-    ("WAKE_LOCK", "normal", "Keep screen on during activities", True),
+    ("WAKE_LOCK", "normal", "Keep screen on while solving", True),
     ("RECEIVE_BOOT_COMPLETED", "normal", "Resume downloads on boot", True),
 ]
-for name, status, desc, justified in app3_perms:
-    db.add(models.AppPermission(app_id=app3.id, name=name, status=status, description=desc, justified=justified))
+seed_permissions(app3.id, app3_perms, "Mathematics", ["Google Firebase Analytics", "Appsflyer", "Mixpanel"], "12-22 Years")
 
 # Trackers (minimal — designed for children)
-app3_trackers = [
-    ("Google Firebase", "low", "App analytics and crash reporting (COPPA-compliant configuration)", "Analytics"),
-]
-for name, risk, desc, cat in app3_trackers:
-    db.add(models.AppTracker(app_id=app3.id, name=name, risk=risk, description=desc, category=cat))
+seed_trackers(
+    app3.id,
+    ["Google Firebase Analytics", "Google Firebase Crashlytics"],
+    target_age="4-8 Years",
+    disclosed_sdks=["Google Firebase Analytics", "Google Firebase Crashlytics"],
+    detected_permissions=["INTERNET", "ACCESS_NETWORK_STATE", "WRITE_EXTERNAL_STORAGE",
+                          "READ_EXTERNAL_STORAGE", "WAKE_LOCK"],
+)
 
 # Personal Data Collection
 app3_data = [
@@ -461,22 +523,21 @@ app4_perms = [
     ("VIBRATE", "normal", "Haptic feedback", True),
     ("BILLING", "normal", "Photomath Plus subscriptions", True),
     ("AD_ID", "dangerous", "Advertising identifier", False),
-    ("ACCESS_FINE_LOCATION", "dangerous", "Analytics and ad targeting", False),
+    ("ACCESS_FINE_LOCATION", "dangerous", "For language events nearby", False),
 ]
-for name, status, desc, justified in app4_perms:
-    db.add(models.AppPermission(app_id=app4.id, name=name, status=status, description=desc, justified=justified))
+seed_permissions(app4.id, app4_perms, "Language Learning", ["Google Analytics", "Facebook SDK", "Adjust SDK", "Unity Ads"], "4-100 Years")
 
-# Trackers
-app4_trackers = [
-    ("Google Firebase", "medium", "Analytics and crash reporting", "Analytics"),
-    ("Google AdMob", "high", "Advertising SDK for free tier", "Advertising"),
-    ("Facebook Analytics", "high", "User behavior and ad attribution", "Advertising"),
-    ("AppsFlyer", "high", "Mobile attribution and marketing analytics", "Marketing"),
-    ("Braze", "medium", "Push notifications and engagement", "Marketing"),
-    ("Amplitude", "medium", "Product analytics", "Analytics"),
-]
-for name, risk, desc, cat in app4_trackers:
-    db.add(models.AppTracker(app_id=app4.id, name=name, risk=risk, description=desc, category=cat))
+# Trackers — use SDK analyzer
+seed_trackers(
+    app4.id,
+    ["Google Firebase Analytics", "Google AdMob", "Facebook SDK",
+     "Appsflyer", "Braze", "Amplitude"],
+    target_age="5-18 Years",
+    disclosed_sdks=["Google Firebase Analytics", "Amplitude"],
+    detected_permissions=["INTERNET", "ACCESS_NETWORK_STATE", "CAMERA",
+                          "WRITE_EXTERNAL_STORAGE", "READ_EXTERNAL_STORAGE",
+                          "AD_ID", "ACCESS_FINE_LOCATION"],
+)
 
 # Personal Data Collection
 app4_data = [
