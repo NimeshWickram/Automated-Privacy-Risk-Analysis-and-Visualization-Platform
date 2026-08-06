@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom';
-import { Shield, LayoutDashboard, Search, GitCompareArrows, Menu, X, Bot, UploadCloud } from 'lucide-react';
+import { Shield, LayoutDashboard, Search, GitCompareArrows, Menu, X, Bot, UploadCloud, Sun, Moon } from 'lucide-react';
 import UploadModal from './UploadModal';
 
 const navItems = [
@@ -14,6 +14,20 @@ export default function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const location = useLocation();
+
+  const [isLight, setIsLight] = useState(() => {
+    return localStorage.getItem('theme') === 'light';
+  });
+
+  useEffect(() => {
+    if (isLight) {
+      document.documentElement.classList.add('light');
+      localStorage.setItem('theme', 'light');
+    } else {
+      document.documentElement.classList.remove('light');
+      localStorage.setItem('theme', 'dark');
+    }
+  }, [isLight]);
 
   return (
     <div className="min-h-screen flex flex-col relative z-0">
@@ -55,6 +69,13 @@ export default function Layout() {
 
           {/* Action Button & Mobile Toggle */}
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsLight(!isLight)}
+              className="p-2 rounded-full bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors"
+              title="Toggle Theme"
+            >
+              {isLight ? <Moon size={18} /> : <Sun size={18} />}
+            </button>
             <button
               onClick={() => setUploadOpen(true)}
               className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 transition-colors whitespace-nowrap"

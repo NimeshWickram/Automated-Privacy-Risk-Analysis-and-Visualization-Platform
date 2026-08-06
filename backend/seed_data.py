@@ -82,7 +82,70 @@ Base.metadata.create_all(bind=engine)
 db = SessionLocal()
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# APP 1: GOOGLE CLASSROOM
+# APP 0: GOOGLE CLASSROOM (OLDER VERSION FOR DRIFT DEMO)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+app0 = models.AppAnalysis(
+    app_name="Google Classroom",
+    package_name="com.google.android.apps.classroom",
+    developer="Google LLC",
+    category="Education",
+    version_name="8.0.123",
+    apk_size="40.5 MB",
+    target_sdk=31,
+    apk_hash="dummyoldhash123",
+    analyzed_at="2024-01-15T10:30:00Z",
+    description="Older version of Google Classroom for drift demonstration.",
+    play_store_rating=4.2,
+    installs="1B+",
+    target_age="6-18 Years",
+    risk_score=75,
+    risk_grade="C",
+    risk_level="High",
+    encryption_protocol="TLS 1.2",
+    authentication_method="Google OAuth 2.0",
+    data_storage_type="Cloud (Google Servers)",
+    has_2fa=False,
+    compliance_standards="FERPA",
+)
+db.add(app0)
+db.flush()
+
+app0_perms = [
+    ("INTERNET", "normal", "Network access for cloud sync", True),
+    ("ACCESS_NETWORK_STATE", "normal", "Check network connectivity", True),
+    ("CAMERA", "dangerous", "Take photos for assignments", True),
+    ("READ_EXTERNAL_STORAGE", "dangerous", "Upload files from device", True),
+    ("WRITE_EXTERNAL_STORAGE", "dangerous", "Save downloaded assignments", True),
+    ("GET_ACCOUNTS", "dangerous", "Access Google accounts on device", True),
+    ("READ_CONTACTS", "dangerous", "Find classmates and teachers", False),
+    ("ACCESS_FINE_LOCATION", "dangerous", "Location for exam proctoring", False),
+    ("RECORD_AUDIO", "dangerous", "Voice recordings for submissions", True),
+    ("READ_PHONE_STATE", "dangerous", "Device ID for older analytics", False), # Removed in new version
+]
+seed_permissions(app0.id, app0_perms, "Education", ["Google Analytics", "Facebook SDK"], "6-18 Years")
+
+seed_trackers(
+    app0.id,
+    ["Google Firebase Analytics", "Facebook SDK", "Appsflyer"], # Extra SDKs removed later
+    target_age="6-18 Years",
+    disclosed_sdks=["Google Firebase Analytics"],
+    detected_permissions=["INTERNET", "ACCESS_NETWORK_STATE", "CAMERA", "GET_ACCOUNTS",
+                          "WRITE_EXTERNAL_STORAGE", "READ_EXTERNAL_STORAGE",
+                          "ACCESS_FINE_LOCATION", "RECORD_AUDIO", "READ_PHONE_STATE"],
+)
+
+# Minimal data collection for the older app just so it doesn't break UI
+db.add(models.PersonalDataCollection(
+    app_id=app0.id, data_category="Device", data_type="Device ID", is_collected=True,
+    collection_method="Automatic", storage_location="Cloud", encryption_status="Encrypted in Transit",
+    shared_with_third_parties=True, third_party_names="Facebook", retention_period="Unknown",
+    risk_level="High", purpose="Analytics and Ad targeting", legal_basis="Consent"
+))
+db.flush()
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# APP 1: GOOGLE CLASSROOM (CURRENT VERSION)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 app1 = models.AppAnalysis(

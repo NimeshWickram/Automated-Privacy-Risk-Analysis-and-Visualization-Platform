@@ -21,11 +21,37 @@
   /* teal-400 */
 }
 
+/* Light Theme Overrides */
+.light {
+  --color-slate-950: var(--color-slate-50);
+  --color-slate-900: var(--color-slate-100);
+  --color-slate-800: var(--color-slate-200);
+  --color-slate-700: var(--color-slate-300);
+  --color-slate-600: var(--color-slate-400);
+  --color-slate-500: var(--color-slate-600);
+  --color-slate-400: var(--color-slate-700);
+  --color-slate-300: var(--color-slate-800);
+  --color-slate-200: var(--color-slate-900);
+  --color-slate-100: var(--color-slate-950);
+  --color-slate-50: var(--color-slate-950);
+  
+  --color-indigo-400: var(--color-indigo-600);
+  --color-indigo-300: var(--color-indigo-700);
+  --color-purple-400: var(--color-purple-600);
+  --color-teal-400: var(--color-teal-600);
+}
+
+
 
 
 html {
   font-size: 16px;
   background-color: #020617;
+  transition: background-color 0.3s ease;
+}
+
+html.light {
+  background-color: #f8fafc;
 }
 
 body {
@@ -37,6 +63,11 @@ body {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
+  transition: color 0.3s ease;
+}
+
+.light body {
+  color: #0f172a;
 }
 
 /* Background Aurora Effects */
@@ -46,6 +77,11 @@ body {
   z-index: -1;
   background-color: #020617;
   overflow: hidden;
+  transition: background-color 0.3s ease;
+}
+
+.light .aurora-bg {
+  background-color: #f8fafc;
 }
 
 .aurora-bg::before,
@@ -132,7 +168,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 1.5rem;
   /* 24px */
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease, background-color 0.3s ease;
   position: relative;
   overflow: hidden;
 }
@@ -140,6 +176,17 @@ body {
 .bento-card:hover {
   border-color: rgba(255, 255, 255, 0.1);
   box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+}
+
+.light .bento-card {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.light .bento-card:hover {
+  border-color: rgba(15, 23, 42, 0.2);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
 }
 
 /* Subtle top highlight for cards */
@@ -153,6 +200,10 @@ body {
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
 }
 
+.light .bento-card::before {
+  background: linear-gradient(90deg, transparent, rgba(15, 23, 42, 0.05), transparent);
+}
+
 /* Floating Navbar */
 .floating-nav {
   background: rgba(15, 23, 42, 0.7);
@@ -161,6 +212,12 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 9999px;
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.light .floating-nav {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(15, 23, 42, 0.1);
 }
 
 /* Pill Link Active */
@@ -171,6 +228,11 @@ body {
 .pill-link:hover {
   color: #f8fafc;
   background: rgba(255, 255, 255, 0.05);
+}
+
+.light .pill-link:hover {
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.05);
 }
 
 .pill-link.active {
@@ -188,6 +250,13 @@ body {
 
 .gradient-text-subtle {
   background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.light .gradient-text-subtle {
+  background: linear-gradient(135deg, #475569, #1e293b);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
