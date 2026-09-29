@@ -1,7 +1,5 @@
 # PrivacyGuard: Educational App Privacy Analyzer
 
-> Recovery status (2026-09-29): Phase 4 adds independent ground-truth review, a separate blinded reviewer API, protected researcher APIs, explicit dataset evaluation, ablation, error analysis and exports. Read [Phase 4 setup and deliverables](phase4_deliverables.md), [Phase 3 graph](phase3_deliverables.md), [Phase 2 fusion](phase2_deliverables.md), [Phase 1 setup](phase1_deliverables.md), [recovery audit](RECOVERY_AUDIT.md) and [research validation](RESEARCH_VALIDATION.md). **175 implementation tests pass; no real-world benchmark has been evaluated.** Static code remains API-reference evidence; network capture/runtime instrumentation remain unavailable. The historical feature description below is not evidence of observed runtime behavior or empirical accuracy.
-
 ![PrivacyGuard Banner](public/icons.svg)
 
 > **Final Year Research Project**: Automated Privacy Risk Analysis and Visualization Platform for Free Educational Android Applications.
