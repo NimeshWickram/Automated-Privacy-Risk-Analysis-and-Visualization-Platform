@@ -1,3 +1,4 @@
+import { apiFetch } from '../api';
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Sparkles, Loader2, MessageSquare } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
@@ -47,7 +48,7 @@ export default function ChatbotPage() {
       if (appId) {
         body.app_id = parseInt(appId, 10);
       }
-      const res = await fetch('/api/chatbot', {
+      const res = await apiFetch('/api/chatbot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

@@ -1,9 +1,12 @@
 import os
 import shutil
+from pathlib import Path
+from uuid import uuid4
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Literal
 
 from database import engine, Base, get_db
 import models
@@ -15,11 +18,34 @@ import evidence_engine
 import policy_extractor
 import data_safety_scraper
 import llm_report_generator
+import provenance
+import fusion_service
+import graph_service
+from adapter import adapt_legacy_records
+from privacy_ontology import configuration, PRESETS
 
-# Create tables
-Base.metadata.create_all(bind=engine)
+# Schema changes are performed only by explicit, backed-up migrations.
 
 app = FastAPI(title="Privacy Risk Analysis API")
+
+from benchmark_api import router as benchmark_router
+import research_auth
+from fastapi.responses import JSONResponse
+import hmac
+app.include_router(benchmark_router)
+
+
+@app.middleware('http')
+async def protect_research(request, call_next):
+    if request.url.path.startswith('/api/') and request.method != 'OPTIONS':
+        secret = research_auth.configured_key()
+        if secret is not None:
+            supplied = request.headers.get('X-Research-Key', '')
+            if not hmac.compare_digest(secret, supplied):
+                return JSONResponse({'detail': 'Researcher credential required. Reviewers must use the isolated review service.'}, status_code=403)
+        elif research_auth.assignments_exist():
+            return JSONResponse({'detail': 'Research authentication is missing; analysis access is locked while review records exist.'}, status_code=503)
+    return await call_next(request)
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,8 +55,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-UPLOAD_DIR = "./uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+UPLOAD_DIR = str(Path(__file__).resolve().parent / "uploads")
 
 
 # ─── Pydantic models ───────────────────────────────────────────────────────────
@@ -48,11 +73,18 @@ from androguard.core.apk import APK
 from datetime import datetime
 
 @app.post("/api/analyze")
-async def analyze_apk(file: UploadFile = File(...), policy_url: str = Form(None), db: Session = Depends(get_db)):
-    if not file.filename.endswith('.apk'):
+async def analyze_apk(file: UploadFile = File(...), policy_url: str = Form(None), analysis_configuration: str = Form('E'), db: Session = Depends(get_db)):
+    if not fusion_service.schema_ready(db):
+        raise HTTPException(status_code=503, detail="Apply the Phase 1 and Phase 2 migrations before analysis.")
+    try:
+        configuration(analysis_configuration)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if not (file.filename or "").lower().endswith(".apk"):
         raise HTTPException(status_code=400, detail="Invalid file type. Only APK files are supported.")
 
-    file_path = os.path.join(UPLOAD_DIR, f"{int(time.time())}_{file.filename}")
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    file_path = os.path.join(UPLOAD_DIR, uuid4().hex + ".apk")
     
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -62,8 +94,8 @@ async def analyze_apk(file: UploadFile = File(...), policy_url: str = Form(None)
         apk = APK(file_path)
         app_name = apk.get_app_name() or file.filename
         package_name = apk.get_package()
-        version_name = apk.get_androidversion_name() or "1.0"
-        target_sdk = apk.get_target_sdk_version() or 30
+        version_name = apk.get_androidversion_name() or "unknown"
+        target_sdk = apk.get_target_sdk_version()
         
         # Hash
         with open(file_path, "rb") as f:
@@ -71,22 +103,24 @@ async def analyze_apk(file: UploadFile = File(...), policy_url: str = Form(None)
             
         file_size_mb = f"{os.path.getsize(file_path) / (1024 * 1024):.1f} MB"
         
-        # 2. Extract Data Safety and Privacy Policy (Mocked for now)
-        policy_data = policy_extractor.extract_policy_claims(app_name=app_name, policy_url=policy_url or "")
-        data_safety_data = data_safety_scraper.fetch_data_safety(package_name)
-        
-        # 3. Run Multimodal Evidence Pipeline
-        evidence_results = evidence_engine.run_evidence_pipeline(
-            apk_obj=apk,
-            policy_data=policy_data,
-            data_safety_data=data_safety_data
-        )
-        
+        # Retain a fetched policy document, not unverified LLM or mock claims.
+        policy_text = policy_extractor.fetch_and_clean_policy(policy_url) if policy_url else ""
+        evidence_results = evidence_engine.run_evidence_pipeline(apk_obj=apk)
         declared_permissions = evidence_results["manifest_data"]["permissions"]
         detected_sdks = evidence_results["detected_sdks"]
-        fused_findings = evidence_results["fused_findings"]
-        evidence_summary = evidence_results["summary"]
-        
+        source_status = {
+            "manifest": "observed", "sdk": "manifest_signature_scan",
+            "code": evidence_results.get("code_scan_status", "unknown"),
+            "network": "not_performed", "data_safety": "unavailable",
+            "policy": "document_fetched_claims_not_validated" if policy_text else "unavailable",
+        }
+        if policy_text:
+            evidence_results["evidence_records"].append({
+                "source_type": "privacy_policy", "evidence_category": "policy_document",
+                "data_type": "Privacy policy", "description": "Text fetched from the supplied policy URL; claims not validated.",
+                "raw_evidence": policy_text, "file_reference": policy_url,
+            })
+
         raw_perms = [{"name": p.split('.')[-1], "description": f"Permission {p} requested"} for p in declared_permissions]
         
         # Perform context-aware permission analysis
@@ -101,9 +135,6 @@ async def analyze_apk(file: UploadFile = File(...), policy_url: str = Form(None)
         
         # 4. Basic Risk Scoring (Will be updated with ML later)
         risk_score = min(100, 30 + (dangerous_count * 5) + (perm_analysis["summary"]["excessive_count"] * 10))
-        # Add penalty for disclosure mismatches
-        mismatch_count = evidence_summary["total_mismatches"]
-        risk_score = min(100, risk_score + (mismatch_count * 5))
         
         risk_grade = "A" if risk_score < 40 else "B" if risk_score < 60 else "C" if risk_score < 80 else "D"
         risk_level = "Low" if risk_score < 50 else "Medium" if risk_score < 75 else "High"
@@ -116,51 +147,31 @@ async def analyze_apk(file: UploadFile = File(...), policy_url: str = Form(None)
             category="Education (Auto-assigned)",
             version_name=version_name,
             apk_size=file_size_mb,
-            target_sdk=int(target_sdk) if str(target_sdk).isdigit() else 30,
+            target_sdk=int(target_sdk) if str(target_sdk).isdigit() else None,
             apk_hash=apk_hash,
-            analyzed_at=datetime.utcnow().isoformat() + "Z",
-            description=f"Automated multimodal analysis for {app_name}. Consistency score: {evidence_summary['disclosure_consistency_score']}%",
+            analyzed_at=provenance.utc_now(),
+            description=f"Static evidence analysis for {app_name}. Risk score is a heuristic, not an empirical probability. Runtime collection and disclosures have not been verified.",
             play_store_rating=0.0,
             installs="N/A",
             target_age="Unknown",
             risk_score=risk_score,
             risk_grade=risk_grade,
             risk_level=risk_level,
-            encryption_protocol="TLS 1.2/1.3 (Detected)",
+            encryption_protocol="Not observed",
             authentication_method="Not statically determinable",
-            data_storage_type="Device/Cloud",
+            data_storage_type="Unknown",
             has_2fa=False,
             compliance_standards="Pending Review",
         )
         db.add(app_record)
         db.flush()
         
-        # 6. Store Evidence Sources
-        for ev in evidence_results["evidence_records"]:
-            db.add(models_evidence.EvidenceSource(
-                app_id=app_record.id,
-                source_type=ev["source_type"],
-                evidence_category=ev["evidence_category"],
-                data_type=ev["data_type"],
-                description=ev["description"],
-                confidence=ev.get("confidence", 0.5),
-                severity=ev.get("severity", "medium"),
-                raw_evidence=ev.get("raw_evidence", ""),
-                file_reference=ev.get("file_reference", ""),
-                line_number=ev.get("line_number")
-            ))
-            
-        # 7. Store Disclosure Mismatches
-        for finding in fused_findings:
-            for mismatch in finding.get("mismatches", []):
-                db.add(models_evidence.DisclosureMismatch(
-                    app_id=app_record.id,
-                    data_type=finding["data_type"],
-                    mismatch_type=mismatch["type"],
-                    description=mismatch["description"],
-                    severity=mismatch["severity"]
-                ))
-        
+        # Admission is controlled by the selected configuration. Raw acquisition
+        # is retained once for replay; excluded sources never enter fusion.
+        canonical_records = adapt_legacy_records(evidence_results['evidence_records'])
+        statuses = {key.upper(): value for key, value in source_status.items()}
+        run = fusion_service.analyze_bundle(db, app_record, fusion_service.make_bundle(app_record, canonical_records, statuses), analysis_configuration)
+
         import json
         for perm in perm_analysis["permissions"]:
             alt_json = json.dumps(perm["alternative_permission"]) if perm.get("alternative_permission") else ""
@@ -186,11 +197,7 @@ async def analyze_apk(file: UploadFile = File(...), policy_url: str = Form(None)
         # 8. Generate Rich Data Based on Analysis
         
         # Trackers — basic SDK detection for uploaded APKs
-        default_sdks = list(detected_sdks)
-        if "Google Firebase Analytics" not in default_sdks:
-             default_sdks.append("Google Firebase Analytics")
-        if dangerous_count > 2 and "Facebook Ads" not in default_sdks:
-            default_sdks.append("Facebook Ads")
+        default_sdks = sorted(set(detected_sdks))
         perm_names = [p.split('.')[-1] for p in declared_permissions]
         sdk_analysis = sdk_analyzer.analyze_all_sdks(
             sdk_names=default_sdks,
@@ -203,44 +210,26 @@ async def analyze_apk(file: UploadFile = File(...), policy_url: str = Form(None)
                 app_id=app_record.id,
                 name=sdk["name"],
                 risk=sdk["privacy_impact"],
-                description=sdk["description"],
+                description="SDK manifest signature matched. Access and transmission are not established.",
                 category=sdk["category"],
                 provider=sdk["provider"],
                 privacy_impact=sdk["privacy_impact"],
-                data_accessed=json.dumps(sdk["data_accessed"]),
+                data_accessed="[]",  # Catalog capabilities are not observed access.
                 permissions_connected=json.dumps(sdk["permissions_connected"]),
-                network_domains=json.dumps(sdk["network_domains"]),
+                network_domains="[]",  # Catalog domains are not observed communications.
                 child_appropriate=sdk["child_appropriate"],
                 coppa_mode_available=sdk["coppa_mode_available"],
                 gdpr_compliant=sdk["gdpr_compliant"],
-                is_disclosed=sdk["is_disclosed"],
-                disclosure_status=sdk["disclosure_status"],
+                is_disclosed=None,
+                disclosure_status="unknown",
                 risk_score=sdk["risk_score"],
                 child_risk_multiplier=sdk["child_risk_multiplier"],
-                privacy_config_issues=json.dumps(sdk["privacy_config_issues"]),
-                recommendation=sdk["recommendation"],
+                privacy_config_issues="[]",
+                recommendation="Review SDK behavior and disclosures; presence alone does not establish data access.",
             ))
 
-        # Personal Data
-        if any("LOCATION" in p for p in declared_permissions):
-            db.add(models.PersonalDataCollection(app_id=app_record.id, data_category="Location", data_type="Precise Location", is_collected=True, collection_method="Automatic", storage_location="Cloud", encryption_status="Encrypted in Transit", shared_with_third_parties=True, third_party_names="Ad Networks", retention_period="Unknown", risk_level="High", purpose="Targeted Advertising", legal_basis="Unknown"))
-        if any("CAMERA" in p for p in declared_permissions):
-            db.add(models.PersonalDataCollection(app_id=app_record.id, data_category="Device", data_type="Camera Images", is_collected=True, collection_method="User-Initiated", storage_location="Cloud/Local", encryption_status="Encrypted in Transit", shared_with_third_parties=False, third_party_names="", retention_period="Unknown", risk_level="Medium", purpose="App Functionality", legal_basis="Unknown"))
-        db.add(models.PersonalDataCollection(app_id=app_record.id, data_category="Device", data_type="Device ID", is_collected=True, collection_method="Automatic", storage_location="Cloud", encryption_status="Encrypted in Transit", shared_with_third_parties=True, third_party_names="Analytics Providers", retention_period="Unknown", risk_level="Medium", purpose="Analytics", legal_basis="Unknown"))
-
-        # Payment Gateways
-        if any("BILLING" in p for p in declared_permissions):
-            db.add(models.PaymentGateway(app_id=app_record.id, payment_method="Google Play Billing", provider="Google", encryption_standard="TLS 1.3", pci_dss_compliant=True, fraud_detection=True, fraud_detection_details="Google Play Protect", stolen_card_protection="Handled via Google", chargeback_policy="Standard", auto_renewal=True, cancellation_difficulty="Medium", installment_available=False, data_retained_after_payment="Transaction ID", risk_level="Medium"))
-
-        # Incidents
-        if dangerous_count >= 2:
-            db.add(models.SecurityIncident(app_id=app_record.id, incident_date="2023-11-15", title="Potential Data Over-collection", description="Static analysis flags excessive dangerous permissions for an educational app context.", severity="Medium", affected_users="Unknown", data_compromised="None", is_resolved=False))
-            
-        # Predictions
-        db.add(models.RiskPrediction(app_id=app_record.id, prediction_type="Data Leakage", risk_category="Personal Data", probability=0.45, confidence=0.7, timeframe="12 months", description="Third-party SDKs combined with device permissions create a moderate risk of unintended data leakage.", contributing_factors='["Multiple Tracking SDKs", "Dangerous Permissions"]', recommended_mitigation="Audit SDK data sharing practices.", severity_if_realized="High", historical_basis="Based on similar educational app architectures."))
-
-        # Mechanisms
-        db.add(models.SecurityMechanism(app_id=app_record.id, mechanism_name="SSL/TLS Encryption", category="Network", is_implemented=True, implementation_quality="Good", details="Network traffic appears encrypted.", recommendation=""))
+        # Do not fabricate collection, transmission, payment security, incidents,
+        # probabilities or TLS observations from manifest/SDK presence.
 
         db.commit()
 
@@ -250,7 +239,7 @@ async def analyze_apk(file: UploadFile = File(...), policy_url: str = Form(None)
         except Exception:
             pass
 
-        return {"status": "success", "app_id": app_record.id}
+        return {"status": "success", "app_id": app_record.id, "run_id": run.id, "analysis_configuration_id": configuration(analysis_configuration)['id']}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
@@ -357,6 +346,7 @@ def get_app_details(app_id: int, db: Session = Depends(get_db)):
         models_evidence.LLMReport.app_id == app_id
     ).first()
 
+    provenance_data = provenance.app_provenance(db, app_id)
     dangerous_perms = [p for p in permissions if p.status == "dangerous"]
 
     # Compute dimension scores for radar chart
@@ -399,8 +389,9 @@ def get_app_details(app_id: int, db: Session = Depends(get_db)):
             "apkSize": app_record.apk_size,
             "targetSdkVersion": app_record.target_sdk,
             "apkHash": app_record.apk_hash,
-            "staticAnalysisComplete": True,
-            "dynamicAnalysisComplete": True,
+            "staticAnalysisComplete": bool(provenance_data["runs"]) and all(r["sourceStatus"].get("code") == "complete" for r in provenance_data["runs"]),
+            "dynamicAnalysisComplete": False,
+            "provenanceStatus": provenance_data["status"],
         },
 
         "permissions": {
@@ -540,6 +531,7 @@ def get_app_details(app_id: int, db: Session = Depends(get_db)):
             } for p in risk_predictions]
         },
         
+        "provenance": provenance_data,
         "evidenceSources": {
             "total": len(evidence_sources),
             "list": [{
@@ -552,6 +544,9 @@ def get_app_details(app_id: int, db: Session = Depends(get_db)):
                 "severity": e.severity,
                 "rawEvidence": e.raw_evidence,
                 "fileReference": e.file_reference,
+                "lineNumber": e.line_number,
+                "timestamp": e.timestamp,
+                "evidenceStrengthScore": None,
             } for e in evidence_sources]
         },
 
@@ -665,3 +660,102 @@ def chatbot_endpoint(chat: ChatMessage, db: Session = Depends(get_db)):
 
     result = get_chatbot_response(chat.message, db, chat.app_id)
     return result
+
+
+@app.get("/api/apps/{app_id}/provenance")
+def get_app_provenance(app_id: int, db: Session = Depends(get_db)):
+    if not db.get(models.AppAnalysis, app_id):
+        raise HTTPException(status_code=404, detail="Application not found")
+    try:
+        return provenance.app_provenance(db, app_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+class FusionRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    apk_sha256: str
+    application_version: str
+    records: list[dict]
+    source_status: dict[str, str]
+    configuration: Literal['A', 'B', 'C', 'D', 'E'] = 'E'
+
+
+class AblationRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    source_run_id: int
+    configurations: list[Literal['A', 'B', 'C', 'D', 'E']] = Field(default_factory=lambda: list(PRESETS))
+
+
+@app.get('/api/analysis-configurations')
+def analysis_configurations():
+    return {'configurations': [configuration(preset) for preset in PRESETS],
+            'scoreMeaning': 'Evidence Strength Score is a rule-based score, not a probability.',
+            'ablationScope': 'Evidence admission and fusion over a retained acquisition bundle; not acquisition-time benchmarking.'}
+
+
+def graph_http_error(exc):
+    return HTTPException(status_code=404 if isinstance(exc, LookupError) else 409, detail=str(exc))
+
+
+@app.get('/api/apps/{app_id}/graph-runs')
+def graph_runs(app_id: int, db: Session = Depends(get_db)):
+    if db.get(models.AppAnalysis, app_id) is None:
+        raise HTTPException(status_code=404, detail='Application not found')
+    try:
+        return {'graphs': graph_service.list_graphs(db, app_id)}
+    except (ValueError, LookupError) as exc:
+        raise graph_http_error(exc)
+
+
+@app.post('/api/apps/{app_id}/runs/{run_id}/graph')
+def build_privacy_graph(app_id: int, run_id: int, db: Session = Depends(get_db)):
+    try:
+        result = graph_service.materialize_graph(db, app_id, run_id)
+        db.commit()
+        return result
+    except (ValueError, LookupError) as exc:
+        db.rollback()
+        raise graph_http_error(exc)
+
+
+@app.get('/api/apps/{app_id}/versions/{app_version_id}/runs/{run_id}/graph')
+def privacy_graph(app_id: int, app_version_id: int, run_id: int, db: Session = Depends(get_db)):
+    try:
+        return graph_service.read_graph(db, app_id, app_version_id, run_id)
+    except (ValueError, LookupError) as exc:
+        raise graph_http_error(exc)
+
+
+@app.post('/api/apps/{app_id}/fusion')
+def analyze_evidence_bundle(app_id: int, request: FusionRequest, db: Session = Depends(get_db)):
+    if not fusion_service.schema_ready(db):
+        raise HTTPException(status_code=503, detail='Phase 2 migration is required.')
+    app_record = db.get(models.AppAnalysis, app_id)
+    if app_record is None:
+        raise HTTPException(status_code=404, detail='Application not found')
+    try:
+        run = fusion_service.analyze_bundle(db, app_record, request.model_dump(exclude={'configuration'}), request.configuration)
+        result = {'app_id': app_id, 'run_id': run.id, 'provenance': provenance.app_provenance(db, app_id)}
+        db.commit()
+        return result
+    except (ValueError, TypeError, KeyError) as exc:
+        db.rollback()
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.post('/api/apps/{app_id}/ablation')
+def run_ablation(app_id: int, request: AblationRequest, db: Session = Depends(get_db)):
+    if not fusion_service.schema_ready(db):
+        raise HTTPException(status_code=503, detail='Phase 2 migration is required.')
+    app_record = db.get(models.AppAnalysis, app_id)
+    if app_record is None:
+        raise HTTPException(status_code=404, detail='Application not found')
+    try:
+        runs = fusion_service.ablate(db, app_record, request.source_run_id, request.configurations)
+        result = {'app_id': app_id, 'run_ids': [run.id for run in runs], 'provenance': provenance.app_provenance(db, app_id)}
+        db.commit()
+        return result
+    except (ValueError, TypeError, KeyError) as exc:
+        db.rollback()
+        raise HTTPException(status_code=422, detail=str(exc))

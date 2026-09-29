@@ -4,6 +4,7 @@ import { Shield, LayoutDashboard, Search, GitCompareArrows, Menu, X, Bot, Upload
 import UploadModal from './UploadModal';
 
 const navItems = [
+  { to: '/benchmark', label: 'Benchmark', icon: Shield },
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/analyze', label: 'App Analysis', matchPrefix: '/analyze', icon: Search },
   { to: '/compare', label: 'Compare Apps', icon: GitCompareArrows },

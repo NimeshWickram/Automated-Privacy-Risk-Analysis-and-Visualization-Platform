@@ -70,7 +70,7 @@ export default function DisclosureMismatch({ data }) {
           No Disclosure Mismatches Detected
         </h2>
         <p className="text-sm text-slate-400">
-          The application's technical behavior is consistent with its privacy policy and Google Play Data Safety declaration.
+          No validated disclosure comparison is available. An empty result does not establish consistency with developer claims.
         </p>
       </div>
     );

@@ -1,3 +1,4 @@
+import { apiFetch } from '../api';
 import { useState, useEffect, useMemo } from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { GitCompareArrows, Shield, AlertTriangle, Database, CreditCard, ShieldCheck, ShieldX, Loader2, CheckCircle, XCircle } from 'lucide-react';
@@ -19,7 +20,7 @@ export default function CompareApps() {
   const [selectedIds, setSelectedIds] = useState([]);
 
   useEffect(() => {
-    fetch('/api/compare')
+    apiFetch('/api/compare')
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch comparison data');
         return res.json();

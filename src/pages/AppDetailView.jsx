@@ -1,3 +1,4 @@
+import { apiFetch } from '../api';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Download, Package, Star, Users, Hash, ShieldCheck, Clock, Loader2, Database, CreditCard, AlertTriangle, TrendingUp, Shield, Bot, Lock, Fingerprint, Search, Sparkles } from 'lucide-react';
@@ -17,12 +18,16 @@ import ContextAwarePermissionsTab from '../components/ContextAwarePermissionsTab
 import SDKIntelligenceTab from '../components/SDKIntelligenceTab';
 import EvidenceSourcesTab from '../components/EvidenceSourcesTab';
 import LLMReportTab from '../components/LLMReportTab';
+import ProvenanceFindings from '../components/ProvenanceFindings';
+import PrivacyEvidenceGraph from '../components/PrivacyEvidenceGraph';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: Shield },
   { id: 'ai-report', label: 'AI Educator Brief', icon: Sparkles },
   { id: 'permissions', label: 'Permissions Context', icon: Lock },
   { id: 'evidence', label: 'Evidence Sources', icon: Search },
+  { id: 'findings', label: 'Findings & Provenance', icon: Search },
+  { id: 'graph', label: 'Privacy Evidence Graph', icon: Fingerprint },
   { id: 'sdk-intelligence', label: 'SDK Intelligence', icon: Fingerprint },
   { id: 'personal-data', label: 'Personal Data', icon: Database },
   { id: 'payment', label: 'Payment Security', icon: CreditCard },
@@ -70,7 +75,7 @@ export default function AppDetailView() {
   };
 
   useEffect(() => {
-    fetch(`/api/apps/${appId}`)
+    apiFetch(`/api/apps/${appId}`)
       .then(res => {
         if (!res.ok) {
           if (res.status === 404) throw new Error('Not Found');
@@ -138,6 +143,7 @@ export default function AppDetailView() {
 
   return (
     <div className="responsive-container py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6 lg:space-y-8">
+      {app.provenance?.status !== 'available' && <div className="bento-card p-4 text-sm text-amber-300">Legacy analysis: observations, predictions and reports have not been verified through finding provenance. These records are preserved for review and are not empirical research results.</div>}
       {/* Back link + Export */}
       <div className="flex items-center justify-between animate-fade-in-up">
         <div className="flex items-center gap-2 sm:gap-3">
@@ -270,6 +276,8 @@ export default function AppDetailView() {
 
         {/* Tab Content */}
         <div className="animate-fade-in-up stagger-3">
+          {activeTab === 'findings' && <ProvenanceFindings data={app.provenance} appId={app.id} onUpdated={value => setApp(previous => ({ ...previous, provenance: value }))} />}
+          {activeTab === 'graph' && <PrivacyEvidenceGraph key={app.id} appId={app.id} provenance={app.provenance} />}
           {activeTab === 'overview' && (
             <div className="space-y-6">
               {/* Risk Radar + Permissions */}

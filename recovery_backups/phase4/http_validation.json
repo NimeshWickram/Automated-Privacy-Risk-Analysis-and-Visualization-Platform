@@ -1,0 +1,11 @@
+{
+  "dataset_type": "SYNTHETIC",
+  "validation": "IMPLEMENTATION_ONLY",
+  "two_service_http_workflow": "passed",
+  "blinded_payload": "passed",
+  "prediction_access_denied": "passed",
+  "independent_reviews_and_approval": "passed",
+  "evaluation_and_exports": "passed",
+  "source_database_unchanged": true,
+  "source_sha256": "a2942b17f3233527e83581378ce7f44e6bad678d4dfdb56b4a5780a700792baf"
+}

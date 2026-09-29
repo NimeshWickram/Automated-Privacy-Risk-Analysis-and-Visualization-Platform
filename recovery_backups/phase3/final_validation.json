@@ -1,0 +1,29 @@
+{
+  "phase": "Phase 3",
+  "date_local": "2026-09-29",
+  "implementation_tests_passed": 126,
+  "dataset_type": "SYNTHETIC",
+  "empirical_evaluation": "NOT_EVALUATED",
+  "previous_table_count": 30,
+  "existing_schemas_and_rows_preserved": true,
+  "total_tables": 33,
+  "integrity_check": "ok",
+  "foreign_key_violations": 0,
+  "source_sha256": "11d42d74b1990bda3efa080c578c1d7f924fcd0b780dcff9f71976c859d87d9d",
+  "backup": "C:\\Users\\Shehan Nethuja\\Downloads\\Research\\Automated-Privacy-Risk-Analysis-and-Visualization-Platform\\recovery_backups\\phase3\\before_phase3_20260928T184456267031Z.db",
+  "backup_sha256": "f1b1d20527f276bd72ea7100ebd4bc036614be1e65ff0ead2ef6f9df7044229d",
+  "backend_http_startup": "passed on isolated migrated copy with synthetic fixture",
+  "graph_http_smoke": {
+    "build": "passed",
+    "scoped_read": "passed",
+    "index": "passed",
+    "app_detail": "passed",
+    "wrong_version": "404",
+    "idempotent_build": "passed",
+    "graph_nodes": 14,
+    "graph_edges": 16
+  },
+  "frontend_build": "passed; large bundle and plugin timing warnings",
+  "graph_component_eslint": "passed",
+  "interactive_browser_test": "not performed"
+}

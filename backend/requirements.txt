@@ -1,0 +1,3 @@
+# Validated recovery baseline: Windows x64, CPython 3.12.10.
+# This is a newly tested environment, not a reconstruction of the lost laptop.
+-r requirements-lock-windows-py312.txt

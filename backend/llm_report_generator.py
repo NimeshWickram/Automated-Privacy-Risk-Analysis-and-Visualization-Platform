@@ -84,71 +84,34 @@ def generate_educational_prompt(app_record, evidence_sources, disclosure_mismatc
 
 
 def generate_report(app_id: int, db: Session) -> dict:
-    """
-    Generates the LLM report. Uses a mocked fallback if no API key is present.
-    """
-    # 1. Check if report already exists in DB
-    existing_report = db.query(models_evidence.LLMReport).filter(models_evidence.LLMReport.app_id == app_id).first()
-    if existing_report:
-        return {
-            "status": "success",
-            "source": "cache",
-            "provider": existing_report.provider,
-            "tone": existing_report.tone,
-            "markdown": existing_report.report_markdown,
-            "generated_at": existing_report.generated_at
-        }
-        
-    # 2. Gather data for the prompt
+    """Render only persisted, linked findings until LLM grounding is validated."""
+    import provenance
     app_record = db.query(models.AppAnalysis).filter(models.AppAnalysis.id == app_id).first()
     if not app_record:
         raise ValueError(f"App ID {app_id} not found.")
-        
-    evidence_sources = db.query(models_evidence.EvidenceSource).filter(models_evidence.EvidenceSource.app_id == app_id).order_by(models_evidence.EvidenceSource.severity.desc()).all()
-    disclosure_mismatches = db.query(models_evidence.DisclosureMismatch).filter(models_evidence.DisclosureMismatch.app_id == app_id).all()
-    permissions = db.query(models.AppPermission).filter(models.AppPermission.app_id == app_id).all()
-    trackers = db.query(models.AppTracker).filter(models.AppTracker.app_id == app_id).all()
-    
-    prompt = generate_educational_prompt(app_record, evidence_sources, disclosure_mismatches, permissions, trackers)
-    
-    report_markdown = ""
-    provider_used = "gemini-1.5-pro"
-    
-    # 3. Call Gemini if configured, else fallback
-    if GEMINI_API_KEY:
-        try:
-            model = genai.GenerativeModel('gemini-1.5-pro')
-            response = model.generate_content(prompt)
-            report_markdown = response.text
-        except Exception as e:
-            logger.error(f"Gemini API failed: {e}")
-            report_markdown = generate_mock_report(app_record, disclosure_mismatches)
-            provider_used = "mock-fallback"
+    data = provenance.app_provenance(db, app_id)
+    lines = ["# Evidence-backed privacy summary", "",
+             "This is a deterministic evidence summary, not an LLM assessment or an empirical accuracy result.", ""]
+    if data["status"] != "available":
+        lines.append("Legacy analysis: provenance has not been verified. Re-analyze the APK to obtain linked observations.")
     else:
-        report_markdown = generate_mock_report(app_record, disclosure_mismatches)
-        provider_used = "mock-fallback"
-        
-    from datetime import datetime
-    
-    # 4. Save to DB
-    new_report = models_evidence.LLMReport(
-        app_id=app_id,
-        provider=provider_used,
-        tone="Accessible & Educational",
-        report_markdown=report_markdown,
-        generated_at=datetime.utcnow().isoformat() + "Z"
-    )
-    db.add(new_report)
-    db.commit()
-    
-    return {
-        "status": "success",
-        "source": "generated",
-        "provider": new_report.provider,
-        "tone": new_report.tone,
-        "markdown": new_report.report_markdown,
-        "generated_at": new_report.generated_at
-    }
+        for run in data['runs']:
+            lines.extend([f"## Run {run['id']} — configuration {run.get('configuration', 'Phase 1')}",
+                          f"APK SHA-256: {run['apkSha256']}; application version: {run['applicationVersion']}",
+                          f"Analysis version: {run['analysisVersion']}; configuration ID: {run.get('analysisConfigurationId', 'not recorded in Phase 1')}"])
+            if run.get('enabledSources'):
+                lines.append('Enabled sources: ' + ', '.join(run['enabledSources']))
+            for finding in (item for item in data['findings'] if item['runId'] == run['id']):
+                lines.extend(["### " + finding["category"], finding["interpretation"]])
+                if finding['evidenceStrengthScore'] is not None:
+                    lines.append(f"Evidence Strength Score: {finding['evidenceStrengthScore']:.2f} (rule-based; not a probability).")
+                for link in finding["evidence"]:
+                    lines.append(f"- {link['relationship']}: evidence #{link['evidenceSourceId']} ({link['analyzer']}); snapshot SHA-256 {link['snapshotSha256']}")
+        if not data["findings"]:
+            lines.append("No supported findings were generated. This does not establish absence of privacy risks.")
+        lines.append("Permission and static API references do not establish runtime collection. Any payload or disclosure interpretation is limited to its retained evidence and requires review. No legal conclusion or empirical accuracy is asserted.")
+    return {"status": "success", "source": "structured_evidence", "provider": "deterministic-evidence-template-v2",
+            "tone": "Evidence-based", "markdown": "\n\n".join(lines), "generated_at": provenance.utc_now()}
 
 
 def generate_mock_report(app_record, mismatches) -> str:

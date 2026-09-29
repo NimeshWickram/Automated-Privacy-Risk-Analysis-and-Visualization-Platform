@@ -91,13 +91,7 @@ export default function EvidenceSourcesTab({ data }) {
                 </div>
                 <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
                    <div className="flex items-center gap-2">
-                     <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Confidence</span>
-                     <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                       <div 
-                         className="h-full bg-indigo-500 rounded-full" 
-                         style={{ width: `${Math.round((ev.confidence || 0.5) * 100)}%` }}
-                       />
-                     </div>
+                     <span className="text-[10px] text-slate-500 font-semibold">Evidence Strength Score: {ev.evidenceStrengthScore == null ? 'Not assigned' : ev.evidenceStrengthScore}</span>
                    </div>
                    {ev.fileReference && (
                      <span className="text-xs text-slate-500 font-mono bg-slate-950 px-2 py-1 rounded">

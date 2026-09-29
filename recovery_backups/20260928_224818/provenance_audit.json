@@ -1,0 +1,75 @@
+﻿{
+    "mismatch_links":  [
+                           {
+                               "evidence_source_ids":  "[]",
+                               "privacy_policy_claim":  "unknown",
+                               "data_safety_declaration":  "unknown",
+                               "technical_evidence":  "unknown",
+                               "records":  "11"
+                           }
+                       ],
+    "provenance_completeness":  [
+                                    {
+                                        "total":  "89",
+                                        "missing_timestamp":  "89",
+                                        "missing_raw":  "11",
+                                        "with_line":  "0"
+                                    }
+                                ],
+    "evidence_by_app_source":  [
+                                   {
+                                       "app_id":  "5",
+                                       "source_type":  "data_safety",
+                                       "records":  "6"
+                                   },
+                                   {
+                                       "app_id":  "5",
+                                       "source_type":  "decompiled_code",
+                                       "records":  "63"
+                                   },
+                                   {
+                                       "app_id":  "5",
+                                       "source_type":  "manifest",
+                                       "records":  "9"
+                                   },
+                                   {
+                                       "app_id":  "5",
+                                       "source_type":  "privacy_policy",
+                                       "records":  "11"
+                                   }
+                               ],
+    "application_hash_lengths":  [
+                                     {
+                                         "id":  "1",
+                                         "hash_length":  "64"
+                                     },
+                                     {
+                                         "id":  "2",
+                                         "hash_length":  "64"
+                                     },
+                                     {
+                                         "id":  "3",
+                                         "hash_length":  "64"
+                                     },
+                                     {
+                                         "id":  "4",
+                                         "hash_length":  "64"
+                                     },
+                                     {
+                                         "id":  "5",
+                                         "hash_length":  "64"
+                                     }
+                                 ],
+    "reports":  [
+                    {
+                        "app_id":  "5",
+                        "provider":  "mock-fallback",
+                        "generated_at":  "2026-07-24T19:05:52.119706Z"
+                    },
+                    {
+                        "app_id":  "4",
+                        "provider":  "mock-fallback",
+                        "generated_at":  "2026-07-24T19:07:19.371429Z"
+                    }
+                ]
+}

@@ -1,17 +1,35 @@
 """
-Seed script to populate the database with researched data
-for 4 educational Android apps.
+Legacy demonstration data, not independently verified research ground truth.
 
 Usage:
-    cd backend
-    python seed_data.py
+    python backend/seed_data.py --database path/to/new_demo.db
+
+The destination must not exist. The recovered application database is never
+an allowed destination. This script is intentionally not an importable module.
 """
 
+import argparse
 import sys
 import os
 sys.path.insert(0, os.path.dirname(__file__))
 
-from database import engine, Base, SessionLocal
+if __name__ != "__main__":
+    raise RuntimeError("Seed data must be run explicitly with --database pointing to a new demo file.")
+
+from database_paths import validate_seed_destination, reserve_seed_destination
+
+parser = argparse.ArgumentParser(description="Create a separate SYNTHETIC demonstration database.")
+parser.add_argument("--database", required=True, help="New database file; existing files are refused.")
+args = parser.parse_args()
+try:
+    seed_path = validate_seed_destination(args.database)
+except ValueError as exc:
+    parser.error(str(exc))
+
+from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
+from sqlalchemy.orm import sessionmaker
+from database import Base
 import models
 import models_evidence
 import permission_analyzer
@@ -75,8 +93,15 @@ def seed_trackers(app_id, sdk_names, target_age="", disclosed_sdks=None, detecte
         ))
     db.flush()
 
-# Recreate all tables
-Base.metadata.drop_all(bind=engine)
+# Reserve only after dependencies load, before opening any database connection.
+try:
+    seed_path = reserve_seed_destination(seed_path)
+except (ValueError, OSError) as exc:
+    parser.error(str(exc))
+
+# This engine belongs exclusively to a new demo file, never the application DB.
+engine = create_engine(URL.create("sqlite", database=str(seed_path)))
+SessionLocal = sessionmaker(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 db = SessionLocal()
@@ -692,9 +717,9 @@ for ptype, cat, prob, conf, tf, desc, factors, mitigation, sev, basis in app4_pr
 db.commit()
 db.close()
 
-print("[OK] Database seeded successfully with 4 educational apps:")
+print("[OK] SYNTHETIC demo database created. Not empirical evidence or ground truth.")
 print("   1. Google Classroom")
 print("   2. Duolingo")
 print("   3. Khan Academy Kids")
 print("   4. Photomath")
-print(f"\n   Database: {os.path.abspath('privacy_analyzer.db')}")
+print(f"\n   Database: {seed_path}")

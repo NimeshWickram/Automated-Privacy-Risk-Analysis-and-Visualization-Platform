@@ -1,39 +1,29 @@
+import { apiFetch } from '../api';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, UploadCloud, File, Loader2, CheckCircle2, Shield, Activity, Server } from 'lucide-react';
+import { X, UploadCloud, File, Loader2, CheckCircle2, Shield } from 'lucide-react';
 
 const ANALYSIS_STEPS = [
-  { id: 'upload', label: 'Uploading APK to Secure Storage...', duration: 1500, icon: UploadCloud },
-  { id: 'static', label: 'Running MobSF Static Analysis...', duration: 2000, icon: Shield },
-  { id: 'dynamic', label: 'Executing Emulator Dynamic Analysis...', duration: 2500, icon: Activity },
-  { id: 'network', label: 'Capturing Network Traffic...', duration: 1500, icon: Server },
-  { id: 'report', label: 'Generating Privacy Risk Report...', duration: 1000, icon: File },
+  { id: 'selected', label: 'APK selected', icon: UploadCloud },
+  { id: 'analysis', label: 'Uploading, analyzing static evidence and applying fusion rules…', icon: Shield },
+  { id: 'saved', label: 'Analysis saved', icon: CheckCircle2 },
 ];
 
 export default function UploadModal({ isOpen, onClose }) {
   const [file, setFile] = useState(null);
   const [policyUrl, setPolicyUrl] = useState("");
+  const [configuration, setConfiguration] = useState('E');
   const [stepIndex, setStepIndex] = useState(-1);
-  const [progress, setProgress] = useState(0);
   const navigate = useNavigate();
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const handleComplete = () => {
-    onClose();
-    navigate('/analyze/1');
-  };
 
   // Reset state when opened
   useEffect(() => {
     if (isOpen) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setFile(null);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPolicyUrl("");
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStepIndex(-1);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setProgress(0);
+      setConfiguration('E');
     }
   }, [isOpen]);
 
@@ -41,19 +31,17 @@ export default function UploadModal({ isOpen, onClose }) {
     if (stepIndex === 0 && file) {
       const uploadFile = async () => {
         try {
-          setProgress(20);
-          setStepIndex(1); // Uploading
+          setStepIndex(1);
           
           const formData = new FormData();
           formData.append("file", file);
+          formData.append('analysis_configuration', configuration);
           if (policyUrl) {
             formData.append("policy_url", policyUrl);
           }
           
-          setProgress(40);
-          setStepIndex(2); // Analysis
 
-          const res = await fetch("http://localhost:8000/api/analyze", {
+          const res = await apiFetch("http://localhost:8000/api/analyze", {
             method: "POST",
             body: formData,
           });
@@ -62,13 +50,10 @@ export default function UploadModal({ isOpen, onClose }) {
             throw new Error("Analysis failed");
           }
           
-          setProgress(80);
-          setStepIndex(3); // Network
           
           const data = await res.json();
           
-          setProgress(100);
-          setStepIndex(4); // Report
+          setStepIndex(2);
           
           setTimeout(() => {
             onClose();
@@ -84,7 +69,7 @@ export default function UploadModal({ isOpen, onClose }) {
       
       uploadFile();
     }
-  }, [stepIndex, file, navigate, onClose]);
+  }, [stepIndex, file, policyUrl, configuration, navigate, onClose]);
 
   const handleFileSelect = (e) => {
     const selected = e.target.files?.[0];
@@ -137,11 +122,20 @@ export default function UploadModal({ isOpen, onClose }) {
                 <UploadCloud className="text-indigo-400 w-7 h-7" />
               </div>
               <p className="text-slate-200 font-semibold mb-1">Upload Android APK</p>
-              <p className="text-xs text-slate-400 mb-4">Maximum file size: 150MB</p>
+              <p className="text-xs text-slate-400 mb-4">Static APK analysis; network capture is not performed.</p>
               <span className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors mb-4">
                 Browse Files
               </span>
               <div className="mt-4" onClick={(e) => e.stopPropagation()}>
+                <label className="block text-left text-xs text-slate-400 relative z-20 mb-3">Evidence configuration
+                  <select value={configuration} onChange={event => setConfiguration(event.target.value)} className="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white">
+                    <option value="A">A — Manifest</option>
+                    <option value="B">B — Manifest + Code</option>
+                    <option value="C">C — Manifest + Code + SDK</option>
+                    <option value="D">D — Manifest + Code + SDK + Network</option>
+                    <option value="E">E — All available sources</option>
+                  </select>
+                </label>
                 <input
                   type="url"
                   placeholder="Privacy Policy URL (Optional)"
@@ -188,8 +182,7 @@ export default function UploadModal({ isOpen, onClose }) {
                         {isActive && (
                           <div className="mt-2 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
                             <div 
-                              className="h-full bg-indigo-500 rounded-full transition-all duration-75 ease-linear"
-                              style={{ width: `${progress}%` }}
+                              className="h-full w-full bg-indigo-500 rounded-full animate-pulse"
                             />
                           </div>
                         )}

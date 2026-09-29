@@ -398,6 +398,7 @@ class EvidenceFusionEngine:
                             "confidence": 0.8,
                             "severity": config["base_severity"],
                             "raw_evidence": pattern.get("context", indicator),
+                            "matched_indicator": indicator,
                             "file_reference": pattern.get("file", ""),
                             "line_number": pattern.get("line"),
                         })
@@ -698,7 +699,7 @@ def extract_manifest_evidence(apk_obj):
 
 # ─── Code Pattern Scanner (Simplified Static Analysis) ──────────────────────
 
-def scan_code_patterns(apk_obj):
+def scan_code_patterns(apk_obj, diagnostics=None):
     """
     Scan decompiled bytecode for privacy-relevant API patterns.
     Uses Androguard's DEX analysis for bytecode-level scanning
@@ -711,6 +712,8 @@ def scan_code_patterns(apk_obj):
         List of detected code patterns
     """
     detected_patterns = []
+    if diagnostics is not None:
+        diagnostics["status"] = "complete"
 
     # Collect all code indicators from all data type categories
     all_indicators = []
@@ -729,7 +732,7 @@ def scan_code_patterns(apk_obj):
 
         # Get DEX files from the APK
         dex_files = apk_obj.get_all_dex()
-        for dex_data in dex_files:
+        for dex_index, dex_data in enumerate(dex_files, 1):
             try:
                 dex = DEX(dex_data)
                 # Scan through strings in the DEX
@@ -739,24 +742,27 @@ def scan_code_patterns(apk_obj):
                         if indicator.lower() in string_val.lower():
                             detected_patterns.append({
                                 "pattern": indicator,
-                                "file": "classes.dex",
+                                "file": "classes.dex" if dex_index == 1 else f"classes{dex_index}.dex",
                                 "line": None,
-                                "context": string_val[:200],
+                                "context": string_val,
                                 "data_type": data_type,
                             })
             except Exception:
+                if diagnostics is not None:
+                    diagnostics["status"] = "partial_failure"
                 continue
     except ImportError:
-        # Fallback: scan the APK's raw resources for string patterns
-        pass
+        if diagnostics is not None:
+            diagnostics["status"] = "unavailable"
     except Exception:
-        pass
+        if diagnostics is not None:
+            diagnostics["status"] = "failed"
 
     # Deduplicate patterns
     seen = set()
     unique_patterns = []
     for p in detected_patterns:
-        key = (p["pattern"], p["data_type"])
+        key = (p["pattern"], p["data_type"], p["file"], p["context"])
         if key not in seen:
             seen.add(key)
             unique_patterns.append(p)
@@ -790,7 +796,8 @@ def run_evidence_pipeline(apk_obj, policy_data=None, data_safety_data=None, netw
     )
 
     # Source 2: Decompiled code/bytecode
-    code_patterns = scan_code_patterns(apk_obj)
+    scan_diagnostics = {}
+    code_patterns = scan_code_patterns(apk_obj, scan_diagnostics)
     engine.add_code_evidence(code_patterns)
 
     # Source 3: Network traffic (if available)
@@ -810,6 +817,7 @@ def run_evidence_pipeline(apk_obj, policy_data=None, data_safety_data=None, netw
     summary = engine.get_summary()
 
     return {
+        "code_scan_status": scan_diagnostics["status"],
         "manifest_data": manifest_data,
         "detected_sdks": detected_sdks,
         "code_patterns": code_patterns,

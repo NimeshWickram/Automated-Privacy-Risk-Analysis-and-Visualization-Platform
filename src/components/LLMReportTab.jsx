@@ -1,3 +1,4 @@
+import { apiFetch } from '../api';
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Sparkles, Loader2, FileText, CheckCircle, RefreshCcw } from 'lucide-react';
@@ -11,7 +12,7 @@ export default function LLMReportTab({ appId, initialReport, onReportGenerated }
     setIsGenerating(true);
     setError(null);
     try {
-      const res = await fetch(`/api/apps/${appId}/generate-report`, {
+      const res = await apiFetch(`/api/apps/${appId}/generate-report`, {
         method: 'POST',
       });
       if (!res.ok) {
@@ -43,7 +44,7 @@ export default function LLMReportTab({ appId, initialReport, onReportGenerated }
         <h2 className="text-xl sm:text-2xl font-bold text-slate-100 mb-3">AI Privacy Educator Brief</h2>
         <p className="text-sm sm:text-base text-slate-400 max-w-lg mx-auto mb-8">
           Generate an explainable, easy-to-understand privacy report tailored for parents and educators. 
-          Powered by Google Gemini 1.5 Pro, grounded in our multimodal evidence.
+          The current report uses a deterministic template with linked evidence. LLM summaries remain disabled until grounding is validated.
         </p>
         
         {error && (

@@ -1,3 +1,4 @@
+import { apiFetch } from '../api';
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
@@ -31,7 +32,7 @@ export default function Dashboard() {
   const [riskFilter, setRiskFilter] = useState('All');
 
   useEffect(() => {
-    fetch('/api/apps')
+    apiFetch('/api/apps')
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch data');
         return res.json();
